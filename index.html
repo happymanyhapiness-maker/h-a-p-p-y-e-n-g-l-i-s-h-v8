@@ -313,6 +313,7 @@ h+='<button onclick="resetAll()" style="margin-top:8px;width:100%;max-width:640p
 }
 
 function setRange(){
+  document.activeElement.blur();  // ←これ追加（重要）
   var f=parseInt(document.getElementById('rFrom').value)||1;
   var t=parseInt(document.getElementById('rTo').value)||(WM.length||2000);
   if(f<1)f=1;if(t>WM.length)t=WM.length;if(f>t)f=t;
