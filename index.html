@@ -382,7 +382,8 @@ function rQuiz(){
           st===2?'<span style="background:rgba(240,90,90,.15);color:#f05a5a;font-size:.64rem;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:5px;">要復習</span>':
           st===3?'<span style="background:rgba(79,200,164,.15);color:#4fc8a4;font-size:.64rem;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:5px;">MASTER</span>':'';
   var h='<div class="prog"><div class="pb"><div class="pf" style="width:'+pct+'%"></div></div><div class="pl">'+(wi+1)+'/'+q.queue.length+'</div></div>';
-h+='<div class="qcard"><div class="qn">No.'+w.num+(w.part?' ['+w.part+']':'')+stB+'</div><div class="qw" onclick="speak(\''+w.word+'\')">'+w.word+'</div>';
+var wd = w.word.replace(/'/g,"\\'");
+h+='<div class="qcard"><div class="qn">No.'+w.num+(w.part?' ['+w.part+']':'')+stB+'</div><div class="qw" onclick="speak(\''+wd+'\')">'+w.word+'</div>';
   for(var i=0;i<opts.length&&i<4;i++){
     var o=opts[i],br,bg,co,bb,bc;
     if(q.ans){
@@ -403,7 +404,10 @@ h+='<div class="qcard"><div class="qn">No.'+w.num+(w.part?' ['+w.part+']':'')+st
     h+='<div class="fm"><b style="font-size:.95rem;color:#e8c547;">'+w.word+'</b><br>';
     if(w.meanings){for(var mi=0;mi<w.meanings.length;mi++)h+=(mi+1)+'. '+w.meanings[mi]+'<br>';}
     h+='</div>';
-if(w.example)h+='<div class="fex" onclick="speak(\''+w.example+'\')">📝 '+w.example+'</div>';
+if(w.example){
+  var ex = w.example.replace(/'/g,"\\'");
+  h+='<div class="fex" onclick="speak(\''+ex+'\')">📝 '+w.example+'</div>';
+}
     h+='<div class="si">'+sm+'</div></div>';
     h+='<div class="ar"><button class="nextbtn" onclick="nq()">'+(wi>=q.queue.length-1?'結果を見る →':'次の単語 →')+'</button></div>';
   }
