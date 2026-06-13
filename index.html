@@ -403,7 +403,7 @@ h+='<div class="qcard"><div class="qn">No.'+w.num+(w.part?' ['+w.part+']':'')+st
     h+='<div class="fm"><b style="font-size:.95rem;color:#e8c547;">'+w.word+'</b><br>';
     if(w.meanings){for(var mi=0;mi<w.meanings.length;mi++)h+=(mi+1)+'. '+w.meanings[mi]+'<br>';}
     h+='</div>';
-    if(w.example)h+='<div class="fex">📝 '+w.example+'</div>';
+if(w.example)h+='<div class="fex" onclick="speak(\''+w.example+'\')">📝 '+w.example+'</div>';
     h+='<div class="si">'+sm+'</div></div>';
     h+='<div class="ar"><button class="nextbtn" onclick="nq()">'+(wi>=q.queue.length-1?'結果を見る →':'次の単語 →')+'</button></div>';
   }
