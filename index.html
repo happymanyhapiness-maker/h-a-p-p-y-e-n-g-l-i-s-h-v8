@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEAP 単語帳</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Sans',sans-serif;background:#08090d;color:#eef0f8;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:18px 13px 76px;}
+.hd{width:100%;max-width:640px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #1e2238;}
+.logo{font-weight:900;font-size:1.3rem;}.logo b{color:#e8c547;}
+.stk{background:#111318;border:1px solid #1e2238;padding:5px 12px;border-radius:20px;font-size:.8rem;font-weight:700;color:#e8c547;}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#111318;border-top:1px solid #1e2238;display:flex;padding:8px;gap:4px;z-index:100;}
+.nb{flex:1;padding:8px 4px;border-radius:10px;border:none;background:transparent;color:#5a6080;font-size:.72rem;font-weight:700;cursor:pointer;}
+.nb.on{background:rgba(232,197,71,.15);color:#e8c547;}
+.row{width:100%;max-width:640px;display:flex;gap:7px;margin-bottom:14px;}
+.box{flex:1;background:#111318;border:1px solid #1e2238;border-radius:11px;padding:9px 6px;text-align:center;}
+.bv{font-size:1.2rem;font-weight:900;}.bl{font-size:.66rem;color:#5a6080;margin-top:2px;}
+.grid{width:100%;max-width:640px;display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;}
+.card{background:#181c26;border:1px solid #1e2238;border-radius:14px;padding:14px;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;}
+.ci{font-size:1.3rem;margin-bottom:5px;}.ct{font-size:.85rem;font-weight:700;margin-bottom:2px;}.cd{font-size:.7rem;color:#5a6080;line-height:1.5;}
+.badge{display:inline-block;background:rgba(240,90,90,.15);color:#f05a5a;border:1px solid #f05a5a;font-size:.67rem;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:4px;}
+.prog{width:100%;max-width:640px;display:flex;align-items:center;gap:9px;margin-bottom:11px;}
+.pb{flex:1;height:5px;background:#111318;border-radius:3px;overflow:hidden;}
+.pf{height:100%;border-radius:3px;background:#e8c547;}
+.pl{font-size:.76rem;color:#5a6080;}
+.qcard{width:100%;max-width:640px;background:#181c26;border:1px solid #1e2238;border-radius:18px;padding:20px 18px;margin-bottom:11px;min-height:320px;}
+.qn{font-size:.68rem;color:#5a6080;margin-bottom:6px;}
+.qw{font-size:1.6rem;font-weight:900;color:#e8c547;line-height:1.2;margin-bottom:12px;min-height:48px;}
+.qopt{padding:11px 13px;border-radius:11px;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:.86rem;font-weight:500;min-height:48px;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+.fbb{width:100%;max-width:640px;border-radius:14px;padding:14px 16px;margin-bottom:9px;border:2px solid;}
+.fbb.ok{background:#0d4a30;border-color:#4fc8a4;}
+.fbb.ng{background:#4a0d0d;border-color:#f05a5a;}
+.ft{font-size:.95rem;font-weight:800;color:#fff;margin-bottom:6px;}
+.fm{font-size:.84rem;line-height:1.8;color:#fff;}
+.fex{font-size:.78rem;color:rgba(255,255,255,.65);margin-top:6px;line-height:1.6;font-style:italic;}
+.si{margin-top:8px;padding:6px 10px;background:rgba(0,0,0,.3);border-radius:7px;font-size:.75rem;color:rgba(255,255,255,.7);}
+.ar{width:100%;max-width:640px;display:flex;justify-content:flex-end;margin-bottom:9px;}
+.nextbtn{padding:10px 24px;background:#e8c547;border:none;border-radius:11px;color:#000;font-size:.92rem;font-weight:800;cursor:pointer;}
+.rbox{width:100%;max-width:640px;text-align:center;}
+.re{font-size:2.6rem;margin-bottom:8px;}.rt{font-size:1.5rem;font-weight:900;margin-bottom:5px;}
+.rs{color:#5a6080;font-size:.84rem;margin-bottom:14px;}
+.srow{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;}
+.sbox{background:#111318;border:1px solid #1e2238;border-radius:10px;padding:9px 14px;text-align:center;}
+.sv2{font-size:1.3rem;font-weight:900;}.sl2{font-size:.7rem;color:#5a6080;margin-top:2px;}
+.abtn{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.btn1{padding:10px 20px;background:#e8c547;border:none;border-radius:11px;color:#000;font-size:.87rem;font-weight:800;cursor:pointer;}
+.btn2{padding:10px 16px;background:#111318;border:1.5px solid #1e2238;border-radius:11px;color:#eef0f8;font-size:.83rem;font-weight:700;cursor:pointer;}
+.lbox{width:100%;max-width:640px;}
+.li{display:flex;align-items:flex-start;padding:9px 12px;border-radius:10px;background:#111318;border:1px solid #1e2238;margin-bottom:5px;gap:6px;}
+.ln{min-width:34px;font-size:.7rem;color:#5a6080;padding-top:2px;}
+.lb{flex:1;}.le{font-weight:700;font-size:.88rem;margin-bottom:2px;}.lm{font-size:.76rem;color:#5a6080;line-height:1.55;}
+.ltag{font-size:.66rem;font-weight:700;padding:2px 6px;border-radius:6px;white-space:nowrap;flex-shrink:0;margin-top:2px;}
+.tn{background:#1e2238;color:#5a6080;}.tg{background:rgba(232,197,71,.15);color:#e8c547;}
+.tr{background:rgba(240,90,90,.15);color:#f05a5a;}.tm{background:rgba(79,200,164,.15);color:#4fc8a4;}
+.sinput{width:100%;max-width:640px;background:#111318;border:1.5px solid #1e2238;border-radius:10px;padding:10px 13px;color:#eef0f8;font-size:.87rem;outline:none;margin-bottom:10px;}
+.sinput:focus{border-color:#e8c547;}
+.frow{width:100%;max-width:640px;display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.fbtn{padding:5px 10px;border-radius:14px;border:1px solid #1e2238;background:#111318;color:#5a6080;font-size:.74rem;font-weight:600;cursor:pointer;}
+.fbtn.on{background:#e8c547;border-color:#e8c547;color:#000;}
+.imp{width:100%;max-width:640px;text-align:center;padding-top:10px;}
+.imp-title{font-size:1.3rem;font-weight:900;margin-bottom:8px;}
+.imp-sub{color:#5a6080;font-size:.86rem;line-height:1.8;margin-bottom:20px;}
+.fmt{background:#181c26;border:1px solid #1e2238;border-radius:12px;padding:14px;text-align:left;margin-bottom:18px;font-size:.8rem;color:#5a6080;line-height:1.9;}
+.fmt b{color:#4fc8a4;}
+.flabel{display:block;width:100%;padding:14px;background:rgba(232,197,71,.08);border:2px dashed #e8c547;border-radius:12px;color:#e8c547;font-size:.93rem;font-weight:700;cursor:pointer;margin-bottom:12px;text-align:center;}
+.ibtn{width:100%;padding:13px;background:#e8c547;border:none;border-radius:12px;color:#000;font-size:.97rem;font-weight:800;cursor:pointer;margin-bottom:10px;}
+.ibtn:disabled{opacity:.4;cursor:default;}
+.ist{font-size:.84rem;color:#4fc8a4;margin-top:8px;min-height:20px;}
+</style>
+</head>
+<body>
+<div class="hd">
+  <div class="logo"><b>LEAP</b> 単語帳</div>
+  <div id="stk" class="stk">🔥 0日連続</div>
+</div>
+<div id="app"></div>
+<div class="nav">
+  <button class="nb on" id="n0" onclick="go(0)">🏠 ホーム</button>
+  <button class="nb" id="n1" onclick="go(1)">📝 クイズ</button>
+  <button class="nb" id="n2" onclick="go(2)">📋 一覧</button>
+</div>
+<script>
+// WM: メモリ上のみ（localStorageに単語データは保存しない）
+var WM = [];
+var SF = null;
+
+// ================================
+// ✅ IndexedDB
+// ================================
+var DB_NAME="leapDB";
+var STORE="words";
+var db=null;
+
+function initDB(){
+ return new Promise((res,rej)=>{
+   var req=indexedDB.open(DB_NAME,1);
+   req.onupgradeneeded=e=>{
+     var d=e.target.result;
+     if(!d.objectStoreNames.contains(STORE)){
+       d.createObjectStore(STORE,{keyPath:"id"});
+     }
+   };
+   req.onsuccess=e=>{db=e.target.result;res();}
+   req.onerror=rej;
+ });
+}
+
+function saveDB(words){
+ return new Promise((res,rej)=>{
+   var tx=db.transaction(STORE,"readwrite");
+   var s=tx.objectStore(STORE);
+   s.clear();
+   words.forEach(w=>s.put(w));
+   tx.oncomplete=res;
+   tx.onerror=rej;
+ });
+}
+
+function loadDB(){
+ return new Promise((res,rej)=>{
+   var tx=db.transaction(STORE,"readonly");
+   var s=tx.objectStore(STORE);
+   var req=s.getAll();
+   req.onsuccess=()=>res(req.result||[]);
+   req.onerror=rej;
+ });
+}
+
+// 進捗のみlocalStorageに保存（軽量）
+function lp(){try{return JSON.parse(localStorage.getItem('lp7')||'{}');}catch(e){return{};}}
+function sp(p){try{localStorage.setItem('lp7',JSON.stringify(p));}catch(e){}}
+function lsk(){return{c:parseInt(localStorage.getItem('ls7')||'0'),d:localStorage.getItem('ld7')||''};}
+function ssk(s){localStorage.setItem('ls7',s.c);localStorage.setItem('ld7',s.d);}
+
+// CSVが読み込まれているかフラグのみ保存
+function hasCsvFlag(){return localStorage.getItem('lcsv7')==='1';}
+function setCsvFlag(){localStorage.setItem('lcsv7','1');}
+
+function nm(){return Date.now();}
+function due(nr){return !nr||nm()>=nr;}
+function gst(lv,wr,nr){if(lv===0)return 0;if(lv>=5)return 3;if(due(nr))return 2;return 1;}
+
+// 単語にprogを付けて返す
+function getW(w){
+  var p=lp(),x=p[w.id];
+  if(x)return{id:w.id,num:w.num,word:w.word,meanings:w.meanings,example:w.example,part:w.part,
+              level:x.level||0,correct:x.correct||0,wrong:x.wrong||0,nextReview:x.nextReview||null,interval:x.interval||0};
+  return{id:w.id,num:w.num,word:w.word,meanings:w.meanings,example:w.example,part:w.part,
+         level:0,correct:0,wrong:0,nextReview:null,interval:0};
+}
+// 進捗だけ保存
+function saveP(w){
+  var p=lp();
+  p[w.id]={level:w.level,correct:w.correct,wrong:w.wrong,nextReview:w.nextReview,interval:w.interval};
+  sp(p);
+}
+
+function parseCSV(txt){
+  var lines=txt.split('\n'),words=[];
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i].trim();if(!line)continue;
+    var cols=[],cur='',inQ=false;
+    for(var j=0;j<line.length;j++){
+      var c=line[j];
+      if(c==='"'){inQ=!inQ;}
+      else if(c===','&&!inQ){cols.push(cur.trim());cur='';}
+      else{cur+=c;}
+    }
+    cols.push(cur.trim());
+    if(cols.length<2)continue;
+    var word=(cols[1]||'').trim();
+    var meaning=(cols[2]||'').trim();
+    if(!word||!meaning||word==='英単語'||word==='word')continue;
+    var meanings=[],tmp=meaning.split(/[\/／]/);
+    for(var k=0;k<tmp.length;k++){var m=tmp[k].trim();if(m)meanings.push(m);}
+    if(!meanings.length)meanings=[meaning];
+    words.push({id:i+1,num:cols[0]||'',word:word,meanings:meanings,
+                example:(cols[3]||'').trim(),part:(cols[4]||'').trim()});
+  }
+  return words;
+}
+
+function calcNext(w,ok){
+  var lv=w.level||0,co=w.correct||0,wr=w.wrong||0;
+  var nr=w.nextReview||null,iv2=w.interval||0;
+  if(ok){
+    co++;
+    var iv=[0,1,3,7,14,30,60],lv2=Math.min(lv,5);
+    lv=lv2+1;iv2=iv[Math.min(lv,6)];nr=nm()+iv2*86400000;
+  } else {wr++;lv=0;iv2=0;nr=nm();}
+  return {id:w.id,level:lv,correct:co,wrong:wr,nextReview:nr,interval:iv2};
+}
+
+var S={t:0,sk:lsk(),lf:0,ls:'',q:{queue:[],i:0,ans:false,sel:-1,ok:0,ng:0,done:false,opts:null,oi:-1,ci:-1}};
+var STLBL=['未出題','学習中','要復習','MASTER'];
+var STCLS=['tn','tg','tr','tm'];
+var L=['A','B','C','D'];
+
+// CSV未読み込みなら取り込み画面へ
+if(WM.length===0)S.t=99;
+
+function ustk(){
+  var td=new Date().toDateString();
+  if(S.sk.d!==td){var yd=new Date(nm()-86400000).toDateString();S.sk.c=(S.sk.d===yd)?S.sk.c+1:1;S.sk.d=td;ssk(S.sk);}
+}
+
+var app=document.getElementById('app');
+function render(){
+  document.getElementById('stk').textContent='🔥 '+S.sk.c+'日連続';
+  for(var i=0;i<3;i++){var el=document.getElementById('n'+i);if(el)el.className='nb'+(S.t===i?' on':'');}
+  if(S.t===99)rImp();
+  else if(S.t===0)rHome();
+  else if(S.t===1)rQuiz();
+  else rList();
+}
+function go(t){
+  if(t===1&&WM.length===0){alert('先にCSVを読み込んでください');return;}
+  S.t=t;render();
+}
+
+function rImp(){
+  app.innerHTML='<div class="imp">'+
+    '<div class="imp-title">📂 CSVを読み込む</div>'+
+    '<div class="imp-sub">LEAPのCSVファイルを選んでください。<br>単語データはメモリにのみ読み込みます。<br>進捗データは端末に保存されます。</div>'+
+    '<div class="fmt"><b>CSVの形式：</b><br>番号,英単語,意味,例文,パート<br><br><b>例：</b><br>1,agree,賛成する／意見が一致する,I agree with you.,part1<br>2,oppose,〜に反対する,,part1</div>'+
+    '<label class="flabel" for="fi">'+(SF?'📄 '+SF.name:'📁 CSVファイルを選択')+'</label>'+
+    '<input type="file" id="fi" accept=".csv,.txt" onchange="onFS(this)" style="display:none">'+
+    '<button class="ibtn" id="ib" onclick="doImp()" '+(SF?'':'disabled')+'>読み込む →</button>'+
+    '<div class="ist" id="ist"></div>'+
+    (WM.length>0?'<button onclick="S.t=0;render();" style="margin-top:14px;width:100%;padding:10px;background:#111318;border:1px solid #1e2238;border-radius:11px;color:#5a6080;font-size:.8rem;cursor:pointer;">今のデータで続ける（'+WM.length+'語）</button>':'')+
+  '</div>';
+}
+
+function onFS(input){if(input.files&&input.files[0]){SF=input.files[0];render();}}
+
+function doImp(){
+  if(!SF)return;
+  var reader=new FileReader();
+
+  reader.onload=async function(e){
+    try{
+      var words=parseCSV(e.target.result);
+
+      if(!words.length){
+        document.getElementById('ist').textContent='エラー: 単語が見つかりません';
+        return;
+      }
+
+      WM=words;
+
+      // ✅ここ追加
+      await saveDB(words);
+
+      document.getElementById('ist').textContent=
+        words.length+'語を保存しました！（次回から自動読み込み）';
+
+      setTimeout(function(){S.t=0;render();},700);
+
+    }catch(err){
+      document.getElementById('ist').textContent='エラー: '+err.message;
+    }
+  };
+
+  reader.readAsText(SF,'UTF-8');
+}
+
+function rHome(){
+  var p=lp(),due2=0,master=0,wrong=0,tot=WM.length;
+  for(var i=0;i<tot;i++){
+    var id=WM[i].id,x=p[id];
+    var lv=x?x.level||0:0,wr=x?x.wrong||0:0,nr=x?x.nextReview||null:null;
+    if(due(nr))due2++;
+    if(lv>=5)master++;
+    if(wr>0&&lv<5)wrong++;
+  }
+  var pct=tot>0?Math.round(master/tot*100):0;
+  var rFrom=S.rFrom||1,rTo=S.rTo||(tot||2000);
+  var h='<div style="width:100%;max-width:640px;margin-bottom:14px;">';
+  h+='<div style="display:flex;justify-content:space-between;font-size:.76rem;color:#5a6080;margin-bottom:5px;"><span>習得率</span><span style="font-weight:700;color:#4fc8a4;">'+pct+'% ('+master+'/'+tot+')</span></div>';
+  h+='<div style="height:5px;background:#111318;border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:#4fc8a4;border-radius:3px;"></div></div></div>';
+  h+='<div class="row"><div class="box"><div class="bv" style="color:#f05a5a">'+due2+'</div><div class="bl">要復習</div></div>';
+  h+='<div class="box"><div class="bv" style="color:#e8c547">'+wrong+'</div><div class="bl">苦手</div></div>';
+  h+='<div class="box"><div class="bv" style="color:#4fc8a4">'+master+'</div><div class="bl">マスター</div></div>';
+  h+='<div class="box"><div class="bv">'+tot+'</div><div class="bl">総単語数</div></div></div>';
+  // 番号範囲指定
+  h+='<div style="width:100%;max-width:640px;background:#181c26;border:1px solid #1e2238;border-radius:12px;padding:12px 14px;margin-bottom:12px;">';
+  h+='<div style="font-size:.72rem;font-weight:700;color:#5a6080;margin-bottom:8px;">🔢 出題範囲（番号）</div>';
+  h+='<div style="display:flex;align-items:center;gap:8px;">';
+  h+='<input id="rFrom" type="number" min="1" max="'+tot+'" value="'+rFrom+'" style="flex:1;background:#111318;border:1.5px solid #1e2238;border-radius:9px;padding:8px 10px;color:#eef0f8;font-size:.9rem;outline:none;text-align:center;">';
+  h+='<span style="color:#5a6080;font-size:.9rem;">〜</span>';
+  h+='<input id="rTo" type="number" min="1" max="'+tot+'" value="'+rTo+'" style="flex:1;background:#111318;border:1.5px solid #1e2238;border-radius:9px;padding:8px 10px;color:#eef0f8;font-size:.9rem;outline:none;text-align:center;">';
+  h+='<button onclick="setRange()" style="padding:8px 14px;background:#e8c547;border:none;border-radius:9px;color:#000;font-size:.82rem;font-weight:800;cursor:pointer;">設定</button>';
+  h+='</div>';
+  h+='<div style="font-size:.72rem;color:#5a6080;margin-top:6px;">現在: '+rFrom+'〜'+rTo+'番（全'+tot+'語中）</div>';
+  h+='</div>';
+  h+='<div class="grid">';
+  h+='<div class="card" onclick="sq(0)"><div class="ci">🎯</div><div class="ct">今日の復習<span class="badge">'+due2+'</span></div><div class="cd">間隔反復。毎日ここだけでOK！</div></div>';
+  h+='<div class="card" onclick="sq(1)"><div class="ci">🔁</div><div class="ct">苦手集中('+wrong+')</div><div class="cd">間違えた単語を繰り返し。</div></div>';
+  h+='<div class="card" onclick="sq(2)"><div class="ci">✨</div><div class="ct">新規単語</div><div class="cd">まだ出ていない単語から。</div></div>';
+  h+='<div class="card" onclick="sq(3)"><div class="ci">📚</div><div class="ct">全単語</div><div class="cd">範囲内からランダム20問。</div></div></div>';
+  h+='<div style="width:100%;max-width:640px;background:#181c26;border:1px solid #1e2238;border-radius:12px;padding:12px 14px;margin-bottom:10px;">';
+  h+='<div style="font-size:.72rem;font-weight:700;color:#5a6080;margin-bottom:5px;">💡 間隔反復</div>';
+  h+='<div style="font-size:.79rem;color:#5a6080;line-height:1.75;">正解→間隔伸びる（翌日→3日→1週→2週→1ヶ月）<br>不正解→すぐまた出題<br><b style="color:#4fc8a4">5回正解でマスター！</b></div></div>';
+  h+='<button onclick="S.t=99;render();" style="width:100%;max-width:640px;padding:10px;background:#111318;border:1px solid #1e2238;border-radius:11px;color:#5a6080;font-size:.8rem;cursor:pointer;">📂 CSVを再読み込み</button>';
+
+h+='<button onclick="resetAll()" style="margin-top:8px;width:100%;max-width:640px;padding:10px;background:#300;border:1px solid #f05a5a;border-radius:11px;color:#f05a5a;font-size:.8rem;cursor:pointer;">🗑 データ完全リセット</button>';
+  app.innerHTML=h;
+}
+
+function setRange(){
+  var f=parseInt(document.getElementById('rFrom').value)||1;
+  var t=parseInt(document.getElementById('rTo').value)||(WM.length||2000);
+  if(f<1)f=1;if(t>WM.length)t=WM.length;if(f>t)f=t;
+  S.rFrom=f;S.rTo=t;
+}
+
+function sq(mode){
+  var p=lp(),pool=[];
+  var rFrom=S.rFrom||1,rTo=S.rTo||(WM.length||2000);
+  for(var i=0;i<WM.length;i++){
+    var w=WM[i],num=parseInt(w.num)||0;
+    if(num<rFrom||num>rTo)continue;
+    var x=p[w.id];
+    var lv=x?x.level||0:0,wr=x?x.wrong||0:0,nr=x?x.nextReview||null:null;
+    if(mode===0&&due(nr))pool.push(i);
+    else if(mode===1&&wr>0&&lv<5)pool.push(i);
+    else if(mode===2&&lv===0)pool.push(i);
+    else if(mode===3)pool.push(i);
+  }
+  if(!pool.length){alert(['今日の復習はありません🎉','苦手単語はありません🎉','新規単語はありません'][mode]||'単語なし');return;}
+  // 先頭20個だけ部分シャッフル（全体シャッフルを避ける）
+  var end=Math.min(pool.length,60);
+  for(var i=0;i<end;i++){
+    var j=i+Math.floor(Math.random()*(pool.length-i));
+    var t=pool[i];pool[i]=pool[j];pool[j]=t;
+  }
+  var idxs=pool.slice(0,20),q=[];
+  for(var i=0;i<idxs.length;i++){
+    var w=WM[idxs[i]],x=p[w.id];
+    q.push({id:w.id,num:w.num,word:w.word,meanings:w.meanings,example:w.example||'',part:w.part||'',
+            level:x?x.level||0:0,correct:x?x.correct||0:0,wrong:x?x.wrong||0:0,
+            nextReview:x?x.nextReview||null:null,interval:x?x.interval||0:0});
+  }
+  S.q={queue:q,i:0,ans:false,sel:-1,ok:0,ng:0,done:false,opts:null,oi:-1,ci:-1};
+  S.t=1;render();
+}
+
+function rQuiz(){
+  var q=S.q;
+  if(!q.queue||q.queue.length===0){
+    // queueが空＝クイズ未開始。ホームのモード選択に誘導
+    app.innerHTML='<div style="text-align:center;padding:40px 20px;color:#5a6080;">'+
+      '<div style="font-size:2rem;margin-bottom:12px;">📝</div>'+
+      '<div style="font-size:1rem;font-weight:700;margin-bottom:8px;">ホームからモードを選んでください</div>'+
+      '<button onclick="go(0)" style="padding:10px 24px;background:#e8c547;border:none;border-radius:11px;color:#000;font-size:.9rem;font-weight:800;cursor:pointer;">ホームへ</button>'+
+    '</div>';
+    return;
+  }
+  if(q.done){rResult();return;}
+  var wi=q.i<q.queue.length?q.i:q.queue.length-1,w=q.queue[wi];
+  var pct=Math.round(wi/q.queue.length*100);
+  if(!q.opts||q.oi!==wi){
+    var opts=[w],used={};used[w.id]=1;var tries=0;
+    while(opts.length<4&&tries<200){
+      var r=Math.floor(Math.random()*WM.length),cand=WM[r];
+      if(!used[cand.id]){used[cand.id]=1;opts.push(cand);}
+      tries++;
+    }
+    for(var i=opts.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=opts[i];opts[i]=opts[j];opts[j]=t;}
+    q.opts=opts;q.ci=-1;
+    for(var i=0;i<opts.length;i++){if(opts[i].id===w.id){q.ci=i;break;}}
+    q.oi=wi;
+  }
+  var opts=q.opts,ci=q.ci;
+  var st=gst(w.level||0,w.wrong||0,w.nextReview||null);
+  var stB=st===0?'<span style="background:#1e2238;color:#5a6080;font-size:.64rem;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:5px;">NEW</span>':
+          st===2?'<span style="background:rgba(240,90,90,.15);color:#f05a5a;font-size:.64rem;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:5px;">要復習</span>':
+          st===3?'<span style="background:rgba(79,200,164,.15);color:#4fc8a4;font-size:.64rem;font-weight:700;padding:2px 5px;border-radius:5px;margin-left:5px;">MASTER</span>':'';
+  var h='<div class="prog"><div class="pb"><div class="pf" style="width:'+pct+'%"></div></div><div class="pl">'+(wi+1)+'/'+q.queue.length+'</div></div>';
+  h+='<div class="qcard"><div class="qn">No.'+w.num+(w.part?' ['+w.part+']':'')+stB+'</div><div class="qw">'+w.word+'</div>';
+  for(var i=0;i<opts.length&&i<4;i++){
+    var o=opts[i],br,bg,co,bb,bc;
+    if(q.ans){
+      if(i===ci){br='1.5px solid #4fc8a4';bg='#0d3328';co='#4fc8a4';bb='#4fc8a4';bc='#000';}
+      else if(i===q.sel){br='1.5px solid #f05a5a';bg='#3a0d0d';co='#f05a5a';bb='#f05a5a';bc='#fff';}
+      else{br='1.5px solid #1e2238';bg='#111318';co='#3a4060';bb='#1e2238';bc='#3a4060';}
+    } else {br='1.5px solid #1e2238';bg='#111318';co='#eef0f8';bb='#1e2238';bc='#8090b0';}
+    var oc=!q.ans?'onclick="aq('+i+')"':'';
+    h+='<div '+oc+' class="qopt" style="border:'+br+';background:'+bg+';color:'+co+';cursor:'+(q.ans?'default':'pointer')+';">';
+    h+='<span style="width:24px;height:24px;border-radius:50%;background:'+bb+';color:'+bc+';display:flex;align-items:center;justify-content:center;font-size:.69rem;font-weight:800;flex-shrink:0;">'+L[i]+'</span>';
+    h+=(o.meanings&&o.meanings.length>0?o.meanings[0]:'?')+'</div>';
+  }
+  h+='</div>';
+  if(q.ans){
+    var ok2=q.sel===ci,iv=[0,1,3,7,14,30,60],nl=Math.min((w.level||0)+(ok2?1:0),6),nd=iv[nl];
+    var sm=ok2?(nd>=30?'🌟 次回: 1ヶ月後':nd>=14?'✨ 次回: 2週間後':nd>=7?'📅 次回: 1週間後':nd>=3?'📅 次回: 3日後':'📅 次回: 明日'):'⚠️ もうすぐまた出題';
+    h+='<div class="fbb '+(ok2?'ok':'ng')+'"><div class="ft">'+(ok2?'✅ 正解！':'❌ 不正解')+'</div>';
+    h+='<div class="fm"><b style="font-size:.95rem;color:#e8c547;">'+w.word+'</b><br>';
+    if(w.meanings){for(var mi=0;mi<w.meanings.length;mi++)h+=(mi+1)+'. '+w.meanings[mi]+'<br>';}
+    h+='</div>';
+    if(w.example)h+='<div class="fex">📝 '+w.example+'</div>';
+    h+='<div class="si">'+sm+'</div></div>';
+    h+='<div class="ar"><button class="nextbtn" onclick="nq()">'+(wi>=q.queue.length-1?'結果を見る →':'次の単語 →')+'</button></div>';
+  }
+  app.innerHTML=h;
+}
+
+function aq(i){
+  var q=S.q;if(q.ans)return;
+  q.sel=i;q.ans=true;
+  var w=q.queue[q.i],ok=i===q.ci;
+  if(ok)q.ok++;else q.ng++;
+  var upd=calcNext(w,ok);
+  // Object.assignを使わず手動コピー
+  var merged={id:w.id,num:w.num,word:w.word,meanings:w.meanings,example:w.example,part:w.part,
+              level:upd.level,correct:upd.correct,wrong:upd.wrong,nextReview:upd.nextReview,interval:upd.interval};
+  q.queue[q.i]=merged;
+  saveP(upd);
+  render();
+}
+
+function nq(){
+  var q=S.q;
+  if(q.i>=q.queue.length-1){q.done=true;ustk();}
+  else{q.i++;q.ans=false;q.sel=-1;q.opts=null;q.oi=-1;q.ci=-1;}
+  render();
+}
+
+function rResult(){
+  var q=S.q,tot=q.queue.length,pct=Math.round(q.ok/tot*100);
+  var e=pct>=80?'🎉':pct>=60?'💪':'😤',m=pct>=80?'素晴らしい！':pct>=60?'いい調子！':'間違いが記憶を強化する！';
+  var p=lp(),due2=0;
+  for(var i=0;i<WM.length;i++){var x=p[WM[i].id];due2+=due(x?x.nextReview||null:null)?1:0;}
+  var h='<div class="rbox"><div class="re">'+e+'</div><div class="rt">'+m+'</div>';
+  h+='<div class="rs">'+q.ok+'/'+tot+' 正解（'+pct+'%）</div>';
+  h+='<div class="srow">';
+  h+='<div class="sbox"><div class="sv2" style="color:#4fc8a4">'+q.ok+'</div><div class="sl2">正解</div></div>';
+  h+='<div class="sbox"><div class="sv2" style="color:#f05a5a">'+q.ng+'</div><div class="sl2">不正解</div></div>';
+  h+='<div class="sbox"><div class="sv2" style="color:#e8c547">'+S.sk.c+'</div><div class="sl2">連続日数</div></div>';
+  h+='<div class="sbox"><div class="sv2" style="color:#f05a5a">'+due2+'</div><div class="sl2">残り要復習</div></div></div>';
+  h+='<div class="abtn"><button class="btn1" onclick="go(0)">ホームへ</button>';
+  if(q.ng>0)h+='<button class="btn2" onclick="sq(1)">苦手を復習 🔁</button>';
+  h+='</div></div>';app.innerHTML=h;
+}
+
+function rList(){
+  var p=lp(),FLBL=['すべて','未出題','学習中','要復習','MASTER'],filtered=[];
+  for(var i=0;i<WM.length;i++){
+    var w=WM[i],x=p[w.id];
+    var lv=x?x.level||0:0,wr=x?x.wrong||0:0,nr=x?x.nextReview||null:null;
+    var s=gst(lv,wr,nr);
+    if(S.lf>0&&s!==S.lf-1)continue;
+    if(S.ls){var q2=S.ls.toLowerCase();if(w.word.toLowerCase().indexOf(q2)<0&&w.meanings.join('').indexOf(q2)<0)continue;}
+    filtered.push({w:w,s:s});
+  }
+  var h='<div class="lbox">';
+  h+='<input class="sinput" type="text" placeholder="単語・意味で検索..." value="'+S.ls+'" oninput="sls(this.value)">';
+  h+='<div class="frow">';
+  for(var i=0;i<5;i++)h+='<button class="fbtn'+(S.lf===i?' on':'')+'" onclick="slf('+i+')">'+FLBL[i]+'</button>';
+  h+='</div><div style="font-size:.76rem;color:#5a6080;margin-bottom:9px;">'+filtered.length+'語'+(filtered.length>150?' (先頭150語)':'')+'</div>';
+  var show=filtered.slice(0,150);
+  for(var i=0;i<show.length;i++){
+    var fw=show[i].w,fs=show[i].s,ms='';
+    for(var mi=0;mi<fw.meanings.length;mi++)ms+=(mi+1)+'. '+fw.meanings[mi]+(mi<fw.meanings.length-1?'　':'');
+    h+='<div class="li"><div class="ln">'+fw.num+'</div><div class="lb"><div class="le">'+fw.word+'</div><div class="lm">'+ms+'</div>';
+    if(fw.example)h+='<div style="font-size:.72rem;color:#3a5060;margin-top:2px;">📝 '+fw.example+'</div>';
+    h+='</div><span class="ltag '+STCLS[fs]+'">'+STLBL[fs]+'</span></div>';
+  }
+  h+='<button onclick="if(confirm(\'進捗をリセットしますか？\')){resetP();}" style="margin-top:14px;width:100%;padding:10px;background:#111318;border:1px solid #1e2238;border-radius:11px;color:#5a6080;font-size:.8rem;cursor:pointer;">学習進捗をリセット</button>';
+  h+='</div>';app.innerHTML=h;
+}
+
+function resetP(){sp({});render();}
+function slf(f){S.lf=f;render();}
+function sls(v){S.ls=v;render();}
+window.go=go;window.sq=sq;window.aq=aq;window.nq=nq;
+window.slf=slf;window.sls=sls;window.resetP=resetP;
+window.onFS=onFS;window.doImp=doImp;window.setRange=setRange;
+(async function(){
+
+  await initDB();
+
+  var saved = await loadDB();
+
+  if(saved && saved.length){
+    WM = saved;
+  }
+
+  if(WM.length===0){
+    S.t=99;
+  }
+
+  render();
+
+})();
+
+function resetAll(){
+  if(confirm("すべてのデータを削除しますか？")){
+    localStorage.clear();
+
+    indexedDB.deleteDatabase("leapDB").onsuccess = function(){
+      alert("リセット完了");
+      location.reload();
+    };
+  }
+}
+
+</script>
+</body>
+</html>
