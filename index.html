@@ -11,12 +11,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Hiragino Sans',sans-serif;background:#08090d;color:#eef0f8;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:18px 13px 76px;}
-
-#app{
-  width:100%;
-  max-width:640px;
-}
-
 .hd{width:100%;max-width:640px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #1e2238;}
 .logo{font-weight:900;font-size:1.3rem;}.logo b{color:#e8c547;}
 .stk{background:#111318;border:1px solid #1e2238;padding:5px 12px;border-radius:20px;font-size:.8rem;font-weight:700;color:#e8c547;}
@@ -323,6 +317,7 @@ function setRange(){
   var t=parseInt(document.getElementById('rTo').value)||(WM.length||2000);
   if(f<1)f=1;if(t>WM.length)t=WM.length;if(f>t)f=t;
   S.rFrom=f;S.rTo=t;
+  render();   // ← 追加
 }
 
 function sq(mode){
