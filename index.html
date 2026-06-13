@@ -499,6 +499,21 @@ window.onFS=onFS;window.doImp=doImp;window.setRange=setRange;
 
 })();
 
+function speak(word){
+  try{
+    if (!window.speechSynthesis) return;
+
+    const uttr = new SpeechSynthesisUtterance(word);
+    uttr.lang = 'en-US';
+    uttr.rate = 1;
+    uttr.pitch = 1;
+
+    speechSynthesis.cancel();
+    speechSynthesis.speak(uttr);
+
+  }catch(e){}
+}
+
 function resetAll(){
   if(confirm("すべてのデータを削除しますか？")){
     localStorage.clear();
