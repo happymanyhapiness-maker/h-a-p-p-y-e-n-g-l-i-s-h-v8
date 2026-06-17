@@ -559,11 +559,22 @@ function rHome(){
 
   var h='';
 
-  h+='<div class="row">';
-  h+='<div class="box"><div class="bv" style="color:#f05a5a">'+dueN+'</div><div class="bl">要復習</div></div>';
-  h+='<div class="box"><div class="bv" style="color:#e8c547">'+wrong+'</div><div class="bl">苦手</div></div>';
-  h+='<div class="box"><div class="bv" style="color:#4fc8a4">'+master+'</div><div class="bl">MASTER</div></div>';
-  h+='</div>';
+h+='<div style="width:100%;max-width:640px;margin-bottom:14px;">';
+h+='<div style="display:flex;justify-content:space-between;font-size:.76rem;color:#5a6080;margin-bottom:5px;">';
+h+='<span>習得率</span>';
+h+='<span style="font-weight:700;color:#4fc8a4;">'+pct+'% ('+master+'/'+WM.length+')</span>';
+h+='</div>';
+h+='<div style="height:5px;background:#111318;border-radius:3px;overflow:hidden;">';
+h+='<div style="height:100%;width:'+pct+'%;background:#4fc8a4;border-radius:3px;"></div>';
+h+='</div>';
+h+='</div>';
+
+h+='<div class="row">';
+h+='<div class="box"><div class="bv" style="color:#f05a5a">'+dueN+'</div><div class="bl">要復習</div></div>';
+h+='<div class="box"><div class="bv" style="color:#e8c547">'+wrong+'</div><div class="bl">苦手</div></div>';
+h+='<div class="box"><div class="bv" style="color:#4fc8a4">'+master+'</div><div class="bl">マスター</div></div>';
+h+='<div class="box"><div class="bv">'+WM.length+'</div><div class="bl">総単語数</div></div>';
+h+='</div>';
 
   h+='<div class="prog"><div class="pb"><div class="pf" style="width:'+pct+'%"></div></div><div class="pl">'+pct+'%</div></div>';
 
