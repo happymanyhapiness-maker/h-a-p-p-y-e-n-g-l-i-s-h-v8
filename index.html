@@ -357,39 +357,51 @@ function calcNext(w,ok){
   }
   return{id:w.id,level:lv,correct:co,wrong:wr,nextReview:nr,interval:iv};
 }
+function hasExampleWord(ex,word){
+  if(!ex||!word)return false;
 
+  var en=String(ex).split(/[（(]/)[0].replace(/^\s+|\s+$/g,"");
+  var base=String(word||"").toLowerCase();
+  var stem=base.replace(/e$/,"");
+
+  var pats=[base,base+"s",base+"es",base+"ed",base+"ing",stem+"ing"];
+
+  if(/[^aeiou]y$/i.test(base)){
+    var y=base.slice(0,-1);
+    pats.push(y+"ies");
+    pats.push(y+"ied");
+  }
+
+  for(var i=0;i<pats.length;i++){
+    var re=new RegExp("\\b"+pats[i].replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
+    if(re.test(en))return true;
+  }
+
+  return false;
+}
 function makeBlank(ex,word){
   if(!ex)return"（例文なし）";
+
   var en=String(ex).split(/[（(]/)[0].replace(/^\s+|\s+$/g,"")||String(ex);
   var safe=String(word||"").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
   var stem=String(word||"").replace(/e$/i,"").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+
   var pats=[safe,safe+"s",safe+"es",safe+"ed",safe+"ing",stem+"ing"];
+
   if(/[^aeiou]y$/i.test(word)){
     var y=String(word).slice(0,-1).toLowerCase();
     pats.push(y+"ies");
     pats.push(y+"ied");
   }
+
   var re=new RegExp("\\b("+pats.join("|")+")\\b","ig");
   var b=en.replace(re,"_____");
+
   if(b===en){
-    var arr=en.split(/\s+/);
-    if(arr.length){
-      arr[Math.min(1,arr.length-1)]="_____";
-      b=arr.join(" ");
-    }
+    return "";
   }
+
   return b;
-}
-function getExampleJP(ex){
-  if(!ex) return "";
-
-  var m = ex.match(/[（(]([^）)]+)[）)]/);
-
-  if(m && m[1]){
-    return m[1].trim();
-  }
-
-  return "";
 }
 
 function distract(w,n){
@@ -409,17 +421,23 @@ function distract(w,n){
 
 function qtype(w,mode){
   var c=cat(w),p=lp(),x=p[w.id]||{},hard=(x.wrong||0)>0||(x.level||0)===0;
+  var canEx=hasExampleWord(w.example,w.word);
+
   if(c==="active"){
-    if(w.example&&Math.random()<(hard?0.55:0.4))return"ex4";
+    if(canEx&&Math.random()<(hard?0.55:0.4))return"ex4";
     return Math.random()<0.6?"je4":"ew4";
   }
-  if(w.example&&hard&&Math.random()<0.35)return"ex4";
+
+  if(canEx&&hard&&Math.random()<0.35)return"ex4";
   return"ew4";
 }
 
 function retryType(t,w){
-  if(t==="ew4")return w.example?"ex4":"je4";
-  if(t==="je4")return w.example?"ex4":"ew4";
+  var canEx=hasExampleWord(w.example,w.word);
+
+  if(t==="ew4")return canEx?"ex4":"je4";
+  if(t==="je4")return canEx?"ex4":"ew4";
+
   return"je4";
 }
 
