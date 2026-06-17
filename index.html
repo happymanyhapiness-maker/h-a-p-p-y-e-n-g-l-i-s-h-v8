@@ -424,59 +424,63 @@ function makeBlank(ex,word){
 
   return b;
 }
+function getExampleJP(ex){
+  if(!ex)return "";
 
-function distract(w,n){
-  var a=[];
-  for(var i=0;i<WM.length;i++){
-    if(WM[i].id!==w.id&&pass(WM[i]))a.push(WM[i]);
+  var m=String(ex).match(/[（(]([^）)]+)[）)]/);
+
+  if(m&&m[1]){
+    return m[1].replace(/^\s+|\s+$/g,"");
   }
-  sh(a);
-  while(a.length<n&&WM.length>1){
-    var r=WM[Math.floor(Math.random()*WM.length)],ok=true;
-    if(!r||r.id===w.id)ok=false;
-    for(var j=0;j<a.length;j++){if(a[j].id===r.id)ok=false;}
-    if(ok)a.push(r);else break;
-  }
-  return a.slice(0,n);
+
+  return "";
 }
-function exDistract(w,n){
-  var a=[],correct=String(w.word||"").toLowerCase();
+function distract(w,n){
+  var out=[],used={};
+  used[w.id]=1;
 
-  for(var i=0;i<WM.length;i++){
-    var x=WM[i];
-    if(!x||x.id===w.id)continue;
+  var tries=0;
+  while(out.length<n && tries<120){
+    tries++;
+    var x=WM[Math.floor(Math.random()*WM.length)];
+    if(!x||used[x.id])continue;
     if(!pass(x))continue;
+    used[x.id]=1;
+    out.push(x);
+  }
 
-    var cand=String(x.word||"").toLowerCase();
+  return out;
+}
 
-    if(cand===correct)continue;
+function exDistract(w,n){
+  var out=[],used={};
+  used[w.id]=1;
 
+  var tries=0;
+  while(out.length<n && tries<200){
+    tries++;
+    var x=WM[Math.floor(Math.random()*WM.length)];
+    if(!x||used[x.id])continue;
+    if(!pass(x))continue;
     if(hasExampleWord(w.example,x.word))continue;
-
     if(sameMeaningGroup(w,x))continue;
 
-    a.push(x);
+    used[x.id]=1;
+    out.push(x);
   }
 
-  sh(a);
+  tries=0;
+  while(out.length<n && tries<120){
+    tries++;
+    x=WM[Math.floor(Math.random()*WM.length)];
+    if(!x||used[x.id])continue;
+    if(!pass(x))continue;
 
-  if(a.length<n){
-    for(i=0;i<WM.length;i++){
-      x=WM[i];
-      if(!x||x.id===w.id)continue;
-      if(!pass(x))continue;
-      if(sameMeaningGroup(w,x))continue;
-
-      var exists=false;
-      for(var j=0;j<a.length;j++){
-        if(a[j].id===x.id)exists=true;
-      }
-      if(!exists)a.push(x);
-      if(a.length>=n)break;
-    }
+    used[x.id]=1;
+    out.push(x);
   }
 
-  return a.slice(0,n);
+  return out;
 }
 
 function sameMeaningGroup(a,b){
@@ -786,9 +790,19 @@ function sq(mode){
     return;
   }
 
-    sh(pool);
+var idxs=[];
+var usedIdx={};
+var tries=0;
 
-  var idxs=pool.slice(0,20),q=[];
+while(idxs.length<20 && idxs.length<pool.length && tries<300){
+  tries++;
+  var r=Math.floor(Math.random()*pool.length);
+  if(usedIdx[r])continue;
+  usedIdx[r]=1;
+  idxs.push(pool[r]);
+}
+
+var q=[];
 
   for(var i=0;i<idxs.length;i++){
     var w=WM[idxs[i]],x=p[w.id];
@@ -897,8 +911,7 @@ function rQuiz(){
     h+='<div class="si">'+sm+'</div></div>';
     h+='<div class="ar">';
     if(ok)h+='<button class="subbtn" onclick="markWeak()">😐 あやふや</button>';
-h+='<button type="button" class="nextbtn" ontouchend="return nextTap(event)" onclick="return nextTap(event)">'+(q.i>=q.queue.length-1?'結果を見る →':'次へ →')+'</button>';
-    h+='</div>';
+h+='<button type="button" class="nextbtn" onclick="this.disabled=true;this.textContent=\'読み込み中...\';nq()">'+(q.i>=q.queue.length-1?'結果を見る →':'次へ →')+'</button>';
   }
 
   app.innerHTML=h;
@@ -935,26 +948,15 @@ function markWeak(){
   mergeInto(w,u);
   alert("要復習に戻しました");
 }
-var NEXT_LOCK=false;
 
-function nextTap(e){
-  if(e){
-    if(e.preventDefault)e.preventDefault();
-    if(e.stopPropagation)e.stopPropagation();
-  }
+var MOVING_NEXT=false;
 
-  if(NEXT_LOCK)return false;
-
-  NEXT_LOCK=true;
-  setTimeout(function(){
-    NEXT_LOCK=false;
-  },400);
-
-  nq();
-  return false;
-}
 function nq(){
+  if(MOVING_NEXT)return;
+  MOVING_NEXT=true;
+
   var q=S.q;
+
   if(q.i>=q.queue.length-1){
     q.done=true;
     ustk();
@@ -966,7 +968,12 @@ function nq(){
     q.oi=-1;
     q.ci=-1;
   }
+
   render();
+
+  setTimeout(function(){
+    MOVING_NEXT=false;
+  },200);
 }
 
 function rResult(){
@@ -1046,7 +1053,6 @@ function resetAll(){
 window.go=go;
 window.sq=sq;
 window.aq=aq;
-window.nextTap=nextTap;
 window.nq=nq;
 window.slf=slf;
 window.sls=sls;
