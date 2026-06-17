@@ -418,7 +418,72 @@ function distract(w,n){
   }
   return a.slice(0,n);
 }
+function exDistract(w,n){
+  var a=[],correct=String(w.word||"").toLowerCase();
 
+  for(var i=0;i<WM.length;i++){
+    var x=WM[i];
+    if(!x||x.id===w.id)continue;
+    if(!pass(x))continue;
+
+    var cand=String(x.word||"").toLowerCase();
+
+    if(cand===correct)continue;
+
+    if(hasExampleWord(w.example,x.word))continue;
+
+    if(sameMeaningGroup(w,x))continue;
+
+    a.push(x);
+  }
+
+  sh(a);
+
+  if(a.length<n){
+    for(i=0;i<WM.length;i++){
+      x=WM[i];
+      if(!x||x.id===w.id)continue;
+      if(!pass(x))continue;
+      if(sameMeaningGroup(w,x))continue;
+
+      var exists=false;
+      for(var j=0;j<a.length;j++){
+        if(a[j].id===x.id)exists=true;
+      }
+      if(!exists)a.push(x);
+      if(a.length>=n)break;
+    }
+  }
+
+  return a.slice(0,n);
+}
+
+function sameMeaningGroup(a,b){
+  var aw=(a.meanings||[]).join(" ");
+  var bw=(b.meanings||[]).join(" ");
+
+  var groups=[
+    ["注ぐ","提供","出す","給仕","serve","pour"],
+    ["作る","創造","生み出","create","make","produce"],
+    ["表す","表現","伝える","express","communicate"],
+    ["言う","述べる","話す","say","tell","speak"],
+    ["見る","眺める","観察","see","look","watch","observe"],
+    ["得る","受け取る","もらう","get","receive","obtain"],
+    ["助ける","支援","help","support","assist"]
+  ];
+
+  for(var i=0;i<groups.length;i++){
+    var ga=false,gb=false;
+    for(var j=0;j<groups[i].length;j++){
+      var k=groups[i][j].toLowerCase();
+      if(aw.toLowerCase().indexOf(k)>=0||String(a.word||"").toLowerCase().indexOf(k)>=0)ga=true;
+      if(bw.toLowerCase().indexOf(k)>=0||String(b.word||"").toLowerCase().indexOf(k)>=0)gb=true;
+    }
+    if(ga&&gb)return true;
+  }
+
+  return false;
+}
 function qtype(w,mode){
   var c=cat(w),p=lp(),x=p[w.id]||{},hard=(x.wrong||0)>0||(x.level||0)===0;
   var canEx=hasExampleWord(w.example,w.word);
@@ -746,7 +811,11 @@ function rQuiz(){
   var w=q.queue[q.i],pct=Math.round(q.i/q.queue.length*100);
 
   if(!q.opts||q.oi!==q.i){
-    q.opts=sh([w].concat(distract(w,3)));
+    if(w.qtype==="ex4"){
+  q.opts=sh([w].concat(exDistract(w,3)));
+}else{
+  q.opts=sh([w].concat(distract(w,3)));
+}
     q.ci=findCorrectIndex(q.opts,w.id);
     q.oi=q.i;
   }
