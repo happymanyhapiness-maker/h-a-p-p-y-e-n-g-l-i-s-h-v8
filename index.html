@@ -897,7 +897,7 @@ function rQuiz(){
     h+='<div class="si">'+sm+'</div></div>';
     h+='<div class="ar">';
     if(ok)h+='<button class="subbtn" onclick="markWeak()">😐 あやふや</button>';
-    h+='<button class="nextbtn" onclick="nq()">'+(q.i>=q.queue.length-1?'結果を見る →':'次へ →')+'</button>';
+h+='<button type="button" class="nextbtn" ontouchend="return nextTap(event)" onclick="return nextTap(event)">'+(q.i>=q.queue.length-1?'結果を見る →':'次へ →')+'</button>';
     h+='</div>';
   }
 
@@ -935,7 +935,24 @@ function markWeak(){
   mergeInto(w,u);
   alert("要復習に戻しました");
 }
+var NEXT_LOCK=false;
 
+function nextTap(e){
+  if(e){
+    if(e.preventDefault)e.preventDefault();
+    if(e.stopPropagation)e.stopPropagation();
+  }
+
+  if(NEXT_LOCK)return false;
+
+  NEXT_LOCK=true;
+  setTimeout(function(){
+    NEXT_LOCK=false;
+  },400);
+
+  nq();
+  return false;
+}
 function nq(){
   var q=S.q;
   if(q.i>=q.queue.length-1){
@@ -1029,6 +1046,7 @@ function resetAll(){
 window.go=go;
 window.sq=sq;
 window.aq=aq;
+window.nextTap=nextTap;
 window.nq=nq;
 window.slf=slf;
 window.sls=sls;
