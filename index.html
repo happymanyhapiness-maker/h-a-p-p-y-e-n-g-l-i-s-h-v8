@@ -216,6 +216,29 @@ function loadDB(cb){
 function lp(){try{return JSON.parse(localStorage.getItem("lp7")||"{}");}catch(e){return{};}}
 function sp(p){try{localStorage.setItem("lp7",JSON.stringify(p));}catch(e){}}
 function lsk(){return{c:parseInt(localStorage.getItem("ls7")||"0",10),d:localStorage.getItem("ld7")||""};}
+function getTodayStudy(){
+  var d=(new Date()).toDateString();
+
+  if(localStorage.getItem("studyDay")!==d){
+    localStorage.setItem("studyDay",d);
+    localStorage.setItem("studyCount","0");
+    return 0;
+  }
+
+  return parseInt(localStorage.getItem("studyCount")||"0",10);
+}
+
+function addTodayStudy(){
+  var d=(new Date()).toDateString();
+
+  if(localStorage.getItem("studyDay")!==d){
+    localStorage.setItem("studyDay",d);
+    localStorage.setItem("studyCount","0");
+  }
+
+  var n=parseInt(localStorage.getItem("studyCount")||"0",10)+1;
+  localStorage.setItem("studyCount",n);
+}
 function ssk(s){localStorage.setItem("ls7",s.c);localStorage.setItem("ld7",s.d);}
 function due(nr){return !nr||now()>=nr;}
 function gst(lv,wr,nr){if(lv===0)return 0;if(lv>=5)return 3;if(due(nr))return 2;return 1;}
@@ -648,6 +671,7 @@ function rHome(){
   }
 
   var locked=S.rangeLocked;
+  var todayStudy=getTodayStudy();
   var pct=WM.length?Math.round(master/WM.length*100):0;
 
   var recMode = getRecommendedMode();
@@ -669,8 +693,7 @@ h+='<div class="row">';
 h+='<div class="box"><div class="bv" style="color:#f05a5a">'+dueN+'</div><div class="bl">要復習</div></div>';
 h+='<div class="box"><div class="bv" style="color:#e8c547">'+wrong+'</div><div class="bl">苦手</div></div>';
 h+='<div class="box"><div class="bv" style="color:#4fc8a4">'+master+'</div><div class="bl">マスター</div></div>';
-h+='<div class="box"><div class="bv">'+WM.length+'</div><div class="bl">総単語数</div></div>';
-h+='</div>';
+h+='<div class="box"><div class="bv" style="color:#7cb8ff">'+todayStudy+'</div><div class="bl">今日の学習</div></div>';h+='</div>';
 
 
   h+='<div class="card" style="margin-bottom:12px;cursor:default">';
@@ -997,7 +1020,7 @@ function aq(i){
   var w=q.queue[q.i],ok=i===q.ci;
   q.sel=i;
   q.ans=true;
-
+  addTodayStudy();
   if(ok){q.ok++;S.combo++;}
   else{q.ng++;S.combo=0;}
 
@@ -1065,7 +1088,12 @@ function rList(){
     f.push({w:w,s:s});
   }
 
-  var h='<div class="lbox"><input class="sinput" placeholder="検索..." value="'+esc(S.ls)+'" oninput="sls(this.value)"><div class="frow">';
+var h='<div class="lbox">';
+h+='<div style="display:flex;gap:6px;width:100%;max-width:640px;margin-bottom:10px;">';
+h+='<input id="searchBox" class="sinput" style="margin-bottom:0;flex:1;" placeholder="検索..." value="'+esc(S.ls)+'" oninput="S.ls=this.value" onkeydown="if(event.key===\'Enter\'){sls(this.value)}">';
+h+='<button class="btn1" style="padding:10px 14px;white-space:nowrap;" onclick="sls(document.getElementById(\'searchBox\').value)">検索</button>';
+h+='</div>';
+h+='<div class="frow">';
   var lbl=["すべて","未出題","学習中","要復習","MASTER"];
   for(i=0;i<lbl.length;i++){
     h+='<button class="fbtn'+(S.lf===i?' on':'')+'" onclick="slf('+i+')">'+lbl[i]+'</button>';
@@ -1094,9 +1122,16 @@ function rList(){
 }
 
 function resetP(){sp({});render();}
-function slf(f){S.lf=f;render();}
-function sls(v){S.ls=v;render();}
-
+function slf(f){
+  var box=document.getElementById("searchBox");
+  if(box)S.ls=box.value;
+  S.lf=f;
+  render();
+}
+function sls(v){
+  S.ls=v;
+  render();
+}
 function speak(t){
   try{
     if(!window.speechSynthesis)return;
