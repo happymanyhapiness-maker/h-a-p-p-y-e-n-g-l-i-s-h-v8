@@ -620,31 +620,19 @@ function setTheme(v){S.theme=v;applyAutoRange();render();}
 function setPartFilter(v){S.partFilter=v;applyAutoRange();render();}
 function setHint(v){S.hintJP=v;render();}
 function toggleRange(){S.rangeOpen=!S.rangeOpen;render();}
-function toggleLock(){S.rangeLocked=!S.rangeLocked;render();}
-
-function setRange(){
-  if(S.rangeLocked)return;
-
-  var f=parseInt($("rFrom").value,10)||1;
-  var t=parseInt($("rTo").value,10)||WM.length;
-
-  f=Math.max(1,Math.min(f,WM.length));
-  t=Math.max(1,Math.min(t,WM.length));
-
-  if(f>t){
-    var x=f;
-    f=t;
-    t=x;
-  }
-
-  S.rFrom=f;
-  S.rTo=t;
+function toggleLock(){
+  S.rangeLocked=!S.rangeLocked;
+  saveRangeSetting();
   render();
+}
+function setRange(){
+  autoSetRange();
 }
 function quickRange(f,t){
   if(S.rangeLocked)return;
   S.rFrom=f;
   S.rTo=Math.min(t,WM.length);
+  saveRangeSetting();
   render();
 }
 function rHome(){
@@ -701,14 +689,14 @@ h+='</div>';
 
   if(S.rangeOpen){
     h+='<div style="display:flex;gap:8px;margin-top:10px;align-items:center">';
-    h+='<input id="rFrom" class="sinput" style="margin:0;text-align:center" type="number" value="'+S.rFrom+'" '+(locked?'disabled':'')+'>';
+h+='<input id="rFrom" class="sinput" style="margin:0;text-align:center" type="number" value="'+S.rFrom+'" onchange="autoSetRange()" '+(locked?'disabled':'')+'>';
     h+='〜';
-    h+='<input id="rTo" class="sinput" style="margin:0;text-align:center" type="number" value="'+S.rTo+'" '+(locked?'disabled':'')+'>';
+h+='<input id="rTo" class="sinput" style="margin:0;text-align:center" type="number" value="'+S.rTo+'" onchange="autoSetRange()" '+(locked?'disabled':'')+'>';
     h+='</div>';
 
     h+='<div class="frow" style="margin-top:10px">';
     h+='<button class="fbtn'+(S.rangeLocked?' on':'')+'" onclick="toggleLock()">'+(locked?'🔒 ロック中':'🔓 編集可')+'</button>';
-    h+='<button class="fbtn" onclick="setRange()" '+(locked?'disabled':'')+'>範囲を反映</button>';
+h+='<div class="cd" style="width:100%;margin-top:2px;">番号を変更すると自動で保存されます。</div>';
     h+='</div>';
 
     h+='<div class="frow">';
@@ -746,6 +734,49 @@ h+='</div>';
   h+=' <button class="btn2" onclick="resetAll()">🗑 リセット</button>';
 
   app.innerHTML=h;
+}
+function saveRangeSetting(){
+  try{
+    localStorage.setItem("rangeFrom",S.rFrom);
+    localStorage.setItem("rangeTo",S.rTo);
+    localStorage.setItem("rangeLocked",S.rangeLocked?"1":"0");
+  }catch(e){}
+}
+
+function loadRangeSetting(){
+  try{
+    var f=parseInt(localStorage.getItem("rangeFrom")||"",10);
+    var t=parseInt(localStorage.getItem("rangeTo")||"",10);
+    var l=localStorage.getItem("rangeLocked");
+
+    if(f&&t){
+      S.rFrom=f;
+      S.rTo=t;
+    }
+
+    S.rangeLocked = l==="1";
+  }catch(e){}
+}
+
+function autoSetRange(){
+  if(S.rangeLocked)return;
+
+  var f=parseInt($("rFrom").value,10)||1;
+  var t=parseInt($("rTo").value,10)||WM.length;
+
+  f=Math.max(1,Math.min(f,WM.length));
+  t=Math.max(1,Math.min(t,WM.length));
+
+  if(f>t){
+    var x=f;
+    f=t;
+    t=x;
+  }
+
+  S.rFrom=f;
+  S.rTo=t;
+  saveRangeSetting();
+  render();
 }
 
 function sq(mode){
@@ -873,14 +904,22 @@ function rQuiz(){
   var w=q.queue[q.i],pct=Math.round(q.i/q.queue.length*100);
 
 if(!q.opts||q.oi!==q.i){
-    if(w.qtype==="ex4"){
-  q.opts=sh([w].concat(exDistract(w,3)));
-}else{
-  q.opts=sh([w].concat(distract(w,3)));
-}
-    q.ci=findCorrectIndex(q.opts,w.id);
-    q.oi=q.i;
+
+  var baseOpts;
+
+  if(w.qtype==="ex4"){
+    baseOpts=[w].concat(exDistract(w,3));
+  }else{
+    baseOpts=[w].concat(distract(w,3));
   }
+
+  q.opts=sh(
+    ensureFourOptions(w,baseOpts)
+  );
+
+  q.ci=findCorrectIndex(q.opts,w.id);
+  q.oi=q.i;
+}
 
   var type=w.qtype==="ew4"?"英→日":(w.qtype==="je4"?"日→英":"例文穴埋め");
   var prompt="",opt=function(o){return"";};
@@ -1097,17 +1136,19 @@ window.markWeak=markWeak;
 window.resetAll=resetAll;
 window.speak=speak;
 window.quickRange=quickRange;
+window.autoSetRange=autoSetRange;
 
 initDB(function(){
   loadDB(function(saved){
     WM=saved||[];
     if(!WM.length){
       S.t=99;
-    }else{
-      S.t=0;
-      applyAutoRange();
-    }
-    render();
+}else{
+  S.t=0;
+  applyAutoRange();
+  loadRangeSetting();
+}
+render();
   });
 });
 </script>
