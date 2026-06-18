@@ -827,7 +827,34 @@ var q=[];
   S.t=1;
   render();
 }
+function ensureFourOptions(w,opts){
+  var used={},out=[],i,x;
 
+  for(i=0;i<opts.length;i++){
+    x=opts[i];
+    if(x&&!used[x.id]){
+      used[x.id]=1;
+      out.push(x);
+    }
+  }
+
+  for(i=0;i<WM.length&&out.length<4;i++){
+    x=WM[i];
+    if(!x||used[x.id])continue;
+    if(!pass(x))continue;
+    used[x.id]=1;
+    out.push(x);
+  }
+
+  for(i=0;i<WM.length&&out.length<4;i++){
+    x=WM[i];
+    if(!x||used[x.id])continue;
+    used[x.id]=1;
+    out.push(x);
+  }
+
+  return out.slice(0,4);
+}
 function findCorrectIndex(opts,id){
   for(var i=0;i<opts.length;i++){
     if(opts[i].id===id)return i;
@@ -845,7 +872,7 @@ function rQuiz(){
 
   var w=q.queue[q.i],pct=Math.round(q.i/q.queue.length*100);
 
-  if(!q.opts||q.oi!==q.i){
+if(!q.opts||q.oi!==q.i){
     if(w.qtype==="ex4"){
   q.opts=sh([w].concat(exDistract(w,3)));
 }else{
@@ -912,6 +939,7 @@ function rQuiz(){
     h+='<div class="ar">';
     if(ok)h+='<button class="subbtn" onclick="markWeak()">😐 あやふや</button>';
 h+='<button type="button" class="nextbtn" onclick="this.disabled=true;this.textContent=\'読み込み中...\';nq()">'+(q.i>=q.queue.length-1?'結果を見る →':'次へ →')+'</button>';
+    h+='</div>';
   }
 
   app.innerHTML=h;
