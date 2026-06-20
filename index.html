@@ -238,6 +238,8 @@ function addTodayStudy(){
 
   var n=parseInt(localStorage.getItem("studyCount")||"0",10)+1;
   localStorage.setItem("studyCount",n);
+var total=parseInt(localStorage.getItem("studyTotal")||"0",10)+1;
+localStorage.setItem("studyTotal",total);
 }
 function ssk(s){localStorage.setItem("ls7",s.c);localStorage.setItem("ld7",s.d);}
 function due(nr){return !nr||now()>=nr;}
@@ -247,7 +249,13 @@ function saveP(w){
   p[w.id]={level:w.level,correct:w.correct,wrong:w.wrong,nextReview:w.nextReview,interval:w.interval};
   sp(p);
 }
-
+function getTotalStudy(){
+  return parseInt(localStorage.getItem("studyTotal")||"0",10);
+}
+function toggleStudyView(){
+  S.studyView = S.studyView==="total" ? "today" : "total";
+  render();
+}
 function parseCSV(txt){
   var lines = txt.split(/\r?\n/);
   var out = [];
@@ -693,7 +701,26 @@ h+='<div class="row">';
 h+='<div class="box"><div class="bv" style="color:#f05a5a">'+dueN+'</div><div class="bl">要復習</div></div>';
 h+='<div class="box"><div class="bv" style="color:#e8c547">'+wrong+'</div><div class="bl">苦手</div></div>';
 h+='<div class="box"><div class="bv" style="color:#4fc8a4">'+master+'</div><div class="bl">マスター</div></div>';
-h+='<div class="box"><div class="bv" style="color:#7cb8ff">'+todayStudy+'</div><div class="bl">今日の学習</div></div>';h+='</div>';
+var totalStudy=getTotalStudy();
+
+var studyIsTotal=S.studyView==="total";
+
+var studyNum=studyIsTotal
+  ? totalStudy
+  : todayStudy;
+
+var studyColor=studyIsTotal
+  ? "#f6c343"
+  : "#7cb8ff";
+
+var studyLabel=studyIsTotal
+  ? "🏆 累計学習"
+  : "🔵 今日の学習";
+
+h+='<div class="box" onclick="toggleStudyView()" style="cursor:pointer">';
+h+='<div class="bv" style="color:'+studyColor+'">'+studyNum+'</div>';
+h+='<div class="bl">'+studyLabel+'</div>';
+h+='</div>';
 
 
   h+='<div class="card" style="margin-bottom:12px;cursor:default">';
@@ -1172,6 +1199,7 @@ window.resetAll=resetAll;
 window.speak=speak;
 window.quickRange=quickRange;
 window.autoSetRange=autoSetRange;
+window.toggleStudyView=toggleStudyView;
 
 initDB(function(){
   loadDB(function(saved){
