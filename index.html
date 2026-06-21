@@ -301,8 +301,8 @@ function parseCSV(txt){
 
     if(!meanings.length) meanings = [meaning];
 
-    out.push({
-      id: out.length+1,
+out.push({
+      id: parseInt(cols[0],10) || (out.length+1),
       num: String(cols[0] || out.length+1),
       word: word,
       meanings: meanings,
@@ -721,7 +721,7 @@ h+='<div class="box" onclick="toggleStudyView()" style="cursor:pointer">';
 h+='<div class="bv" style="color:'+studyColor+'">'+studyNum+'</div>';
 h+='<div class="bl">'+studyLabel+'</div>';
 h+='</div>';
-
+h+='</div>';
 
   h+='<div class="card" style="margin-bottom:12px;cursor:default">';
   h+='<div class="ct">💡 ヒント設定</div>';
@@ -733,7 +733,7 @@ h+='</div>';
   h+='</div>';
 
   // ✅ 復習カード
-  h+='<div class="card" style="margin-bottom:12px;cursor:default">';
+h+='<div class="card" style="margin-bottom:12px;cursor:default">';
   h+='<div class="ct" onclick="toggleRange()" style="cursor:pointer">🔢 出題範囲 '+(S.rangeOpen?'▲':'▼')+'</div>';
   h+='<div class="cd">現在: '+S.rFrom+'〜'+S.rTo+'番 / Active '+active+'語・Passive '+passive+'語</div>';
 
