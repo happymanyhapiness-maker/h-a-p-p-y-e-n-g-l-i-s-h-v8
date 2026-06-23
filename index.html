@@ -1136,7 +1136,7 @@ function rList(){
     f.push({w:w,s:s});
   }
 
-  var pageSize=150;
+var pageSize=100;
   var totalPages=Math.max(1,Math.ceil(f.length/pageSize));
 
   if(S.listPage>=totalPages)S.listPage=totalPages-1;
@@ -1222,8 +1222,6 @@ function rList(){
     h+='<button class="btn2" onclick="listNext()" '+(S.listPage>=totalPages-1?'disabled style="opacity:.35;cursor:default"':'')+'>次へ ▶</button>';
     h+='</div>';
   }
-
-  h+='<button class="btn2" onclick="if(confirm(\'進捗をリセットしますか？\')){resetP()}">学習進捗をリセット</button>';
 
   h+='</div>';
   app.innerHTML=h;
