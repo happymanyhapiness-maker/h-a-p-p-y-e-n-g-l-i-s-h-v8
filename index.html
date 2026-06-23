@@ -230,6 +230,8 @@ var S={
   t:0,sk:lsk(),lf:0,ls:'',
   listPart:'all',
   listPage:0,
+hideMeaning:false,
+revealed:{},
   q:{queue:[],i:0,ans:false,sel:-1,ok:0,ng:0,done:false,opts:null,oi:-1,ci:-1}
 };
 var STLBL=['未出題','学習中','要復習','MASTER'];
@@ -553,6 +555,9 @@ function rList(){
   h+='<option value="passive1" '+(S.listPart==='passive1'?'selected':'')+'>Passive Part1（1001〜1400）</option>';
   h+='<option value="passive2" '+(S.listPart==='passive2'?'selected':'')+'>Passive Part2（1401〜2000）</option>';
   h+='</select>';
+h+='<button class="fbtn'+(S.hideMeaning?' on':'')+'" style="margin-bottom:10px;" onclick="toggleHideMeaning()">';
+h+=(S.hideMeaning?'🙈 意味を隠す：ON':'👀 意味を隠す：OFF');
+h+='</button>';
 
   h+='<div style="font-size:.76rem;color:#5a6080;margin-bottom:9px;">';
   h+=filtered.length+'語';
@@ -568,20 +573,26 @@ function rList(){
 
     var sw=String(fw.word||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]/g,' ');
 
-    h+='<div class="li">';
-    h+='<div class="ln">'+fw.num+'</div>';
-    h+='<div class="lb">';
+var isOpen=!S.hideMeaning||S.revealed[fw.id];
 
-    h+='<div class="le" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
-    h+='<span>'+fw.word+(fw.part?' <span style="font-size:.68rem;color:#8b92b1">['+fw.part+']</span>':'')+'</span>';
-    h+='<button type="button" onclick="event.stopPropagation();speak(\''+sw+'\')" style="border:1px solid #1e2238;background:#111318;color:#7cb8ff;border-radius:999px;padding:2px 7px;font-size:.72rem;font-weight:800;cursor:pointer;">🔊</button>';
-    h+='</div>';
+h+='<div class="li" '+(S.hideMeaning?'onclick="toggleReveal('+fw.id+')" style="cursor:pointer"':'')+'>';
+h+='<div class="ln">'+fw.num+'</div>';
+h+='<div class="lb">';
 
-    h+='<div class="lm">'+ms+'</div>';
+h+='<div class="le" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+h+='<span>'+fw.word+(fw.part?' <span style="font-size:.68rem;color:#8b92b1">['+fw.part+']</span>':'')+'</span>';
+h+='<button type="button" onclick="event.stopPropagation();speak(\''+sw+'\')" style="border:1px solid #1e2238;background:#111318;color:#7cb8ff;border-radius:999px;padding:2px 7px;font-size:.72rem;font-weight:800;cursor:pointer;">🔊</button>';
+h+='</div>';
 
-    if(fw.example){
-      h+='<div style="font-size:.72rem;color:#3a5060;margin-top:2px;">📝 '+fw.example+'</div>';
-    }
+if(isOpen){
+  h+='<div class="lm">'+ms+'</div>';
+
+  if(fw.example){
+    h+='<div style="font-size:.72rem;color:#3a5060;margin-top:2px;">📝 '+fw.example+'</div>';
+  }
+}else{
+  h+='<div class="lm" style="color:#5a6080;">タップで意味を表示</div>';
+}
 
     h+='</div>';
     h+='<span class="ltag '+STCLS[fs]+'">'+STLBL[fs]+'</span>';
@@ -640,11 +651,24 @@ function listNext(){
   S.listPage++;
   render();
 }
+function toggleHideMeaning(){
+  S.hideMeaning=!S.hideMeaning;
+  S.revealed={};
+  render();
+}
+
+function toggleReveal(id){
+  if(!S.hideMeaning)return;
+  S.revealed[id]=!S.revealed[id];
+  render();
+}
 window.go=go;window.sq=sq;window.aq=aq;window.nq=nq;
 window.slf=slf;window.sls=sls;window.resetP=resetP;
 window.slp=slp;
 window.listPrev=listPrev;
 window.listNext=listNext;
+window.toggleHideMeaning=toggleHideMeaning;
+window.toggleReveal=toggleReveal;
 window.onFS=onFS;window.doImp=doImp;window.setRange=setRange;
 (async function(){
 
