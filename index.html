@@ -434,13 +434,65 @@ function saveAnswerLog(log){
     localStorage.setItem("answerLogs",JSON.stringify(logs));
   }catch(e){}
 }
+function logAttemptType(log){
+  return log && log.attemptType ? log.attemptType : "first";
+}
+
+function logDayKey(log){
+  var t = log && log.timestamp ? log.timestamp : 0;
+  if(!t)return "";
+  return (new Date(t)).toDateString();
+}
+
+
+function hasLaterFirstCorrect(arr,timestamp){
+  var baseDay = logDayKey({timestamp:timestamp});
+
+  for(var i=0;i<arr.length;i++){
+    var log = arr[i];
+
+    if(!log || (log.timestamp||0) <= (timestamp||0))continue;
+    if(logAttemptType(log)!=="first")continue;
+    if(!log.isCorrect)continue;
+    if(logDayKey(log)===baseDay)continue;
+
+    return true;
+  }
+
+  return false;
+}
+
+function pushLatest(map,item){
+  var key = item.wordId;
+  if(!map[key] || (item.timestamp||0) >= (map[key].timestamp||0)){
+    map[key] = item;
+  }
+}
+
+function mapToSortedArray(map){
+  var out = [];
+
+  for(var id in map){
+    if(map.hasOwnProperty(id)){
+      out.push(map[id]);
+    }
+  }
+
+  out.sort(function(a,b){
+    return (b.timestamp||0) - (a.timestamp||0);
+  });
+
+  return out;
+}
+
 function analyzeAnswerLogs(){
   var logs = loadAnswerLogs();
   var byWord = {};
-  var result = {
-    remiss: [],
-    streakWrong: [],
-    sameWrong: []
+  var maps = {
+    stumble: {},
+    confusion: {},
+    streakWrong: {},
+    forgetting: {}
   };
 
   for(var i=0;i<logs.length;i++){
@@ -460,96 +512,93 @@ function analyzeAnswerLogs(){
       return (a.timestamp||0) - (b.timestamp||0);
     });
 
-    var last = arr[arr.length-1];
-    var prev = arr.length>=2 ? arr[arr.length-2] : null;
+    var previousFirstCorrect = null;
 
-    // 再ミス：過去に正解があり、直近が不正解
-    var lastCorrectBefore = null;
-    if(last && !last.isCorrect){
-      for(var j=arr.length-2;j>=0;j--){
-        if(arr[j].isCorrect){
-          lastCorrectBefore = arr[j];
+    for(var j=0;j<arr.length;j++){
+      var first = arr[j];
+      if(logAttemptType(first)!=="first")continue;
+
+      if(first.isCorrect){
+        previousFirstCorrect = first;
+        continue;
+      }
+
+      if(previousFirstCorrect && logDayKey(previousFirstCorrect)!==logDayKey(first)){
+        if(hasLaterFirstCorrect(arr,first.timestamp)){
+          continue;
+        }
+
+        pushLatest(maps.forgetting,{
+          wordId:first.wordId,
+          wordNum:first.wordNum,
+          word:first.word,
+          correctAnswer:first.correctAnswer,
+          selectedAnswer:first.selectedAnswer,
+          previousTimestamp:previousFirstCorrect.timestamp,
+          message:"以前は初回で正解 → 後日ミス",
+          timestamp:first.timestamp
+        });
+      }
+
+      var retry = null;
+      for(var k=j+1;k<arr.length;k++){
+        if(logAttemptType(arr[k])==="first")break;
+        if(logAttemptType(arr[k])==="retry"){
+          retry = arr[k];
           break;
         }
       }
 
-      if(lastCorrectBefore){
-        result.remiss.push({
-          wordId:last.wordId,
-          wordNum:last.wordNum,
-          word:last.word,
-          correctAnswer:last.correctAnswer,
-          selectedAnswer:last.selectedAnswer,
-          previousCorrectAnswer:lastCorrectBefore.correctAnswer,
-          message:"前は正解 → 今回ミス",
-          timestamp:last.timestamp
+      if(!retry)continue;
+
+      if(hasLaterFirstCorrect(arr,retry.timestamp)){
+        continue;
+      }
+
+      if(retry.isCorrect){
+        pushLatest(maps.stumble,{
+          wordId:first.wordId,
+          wordNum:first.wordNum,
+          word:first.word,
+          correctAnswer:first.correctAnswer,
+          selectedAnswer:first.selectedAnswer,
+          retrySelectedAnswer:retry.selectedAnswer,
+          message:"初回ミス → 次の出題で正解",
+          timestamp:retry.timestamp
+        });
+      }else if(first.selectedAnswer && retry.selectedAnswer && first.selectedAnswer===retry.selectedAnswer){
+        pushLatest(maps.confusion,{
+          wordId:first.wordId,
+          wordNum:first.wordNum,
+          word:first.word,
+          correctAnswer:first.correctAnswer,
+          selectedAnswer:retry.selectedAnswer,
+          firstSelectedAnswer:first.selectedAnswer,
+          retrySelectedAnswer:retry.selectedAnswer,
+          message:"初回も次の出題も同じ誤答",
+          timestamp:retry.timestamp
+        });
+      }else{
+        pushLatest(maps.streakWrong,{
+          wordId:first.wordId,
+          wordNum:first.wordNum,
+          word:first.word,
+          correctAnswer:first.correctAnswer,
+          firstSelectedAnswer:first.selectedAnswer,
+          selectedAnswer:retry.selectedAnswer,
+          message:"初回ミス → 次の出題でも別の誤答",
+          timestamp:retry.timestamp
         });
       }
     }
-
-    // 連続ミス：直近2回がどちらも不正解
-    if(prev && last && !prev.isCorrect && !last.isCorrect){
-      result.streakWrong.push({
-        wordId:last.wordId,
-        wordNum:last.wordNum,
-        word:last.word,
-        correctAnswer:last.correctAnswer,
-        prevSelectedAnswer:prev.selectedAnswer,
-        selectedAnswer:last.selectedAnswer,
-        sameChoice:prev.selectedAnswer && last.selectedAnswer && prev.selectedAnswer===last.selectedAnswer,
-        message:"2回連続でミス",
-        timestamp:last.timestamp
-      });
-
-      // 同じ誤答：直近2回の不正解で、同じ選択肢を選んでいる
-      if(
-        prev.selectedAnswer &&
-        last.selectedAnswer &&
-        prev.selectedAnswer === last.selectedAnswer
-      ){
-        result.sameWrong.push({
-          wordId:last.wordId,
-          wordNum:last.wordNum,
-          word:last.word,
-          correctAnswer:last.correctAnswer,
-          selectedAnswer:last.selectedAnswer,
-          message:"同じ答えに引っ張られています",
-          timestamp:last.timestamp
-        });
-      }
-    }
   }
 
-  return result;
-}
-function insightListHTML(title,items,emptyText){
-  var h = "";
-
-  h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e2238;">';
-  h+='<div class="ct" style="font-size:.78rem;margin-bottom:6px;">'+title+'</div>';
-
-  if(!items || !items.length){
-    h+='<div class="cd">'+emptyText+'</div>';
-    h+='</div>';
-    return h;
-  }
-
-  var max = Math.min(items.length,10);
-
-  for(var i=0;i<max;i++){
-    var item = items[i];
-    h+='<div style="display:flex;gap:8px;align-items:center;padding:5px 0;font-size:.8rem;">';
-    h+='<span style="color:#5a6080;min-width:52px;">No.'+esc(item.wordNum || item.wordId || "")+'</span>';
-    h+='<span style="font-weight:800;color:#eef0f8;">'+esc(item.word || "")+'</span>';
-    h+='</div>';
-  }
-
-  if(items.length>10){
-    h+='<div class="cd" style="margin-top:4px;">ほか '+(items.length-10)+'語</div>';
-  }
-
-  h+='</div>';
-  return h;
+  return {
+    stumble: mapToSortedArray(maps.stumble),
+    confusion: mapToSortedArray(maps.confusion),
+    streakWrong: mapToSortedArray(maps.streakWrong),
+    forgetting: mapToSortedArray(maps.forgetting)
+  };
 }
 function calcNext(w,ok){
   var lv=w.level||0,co=w.correct||0,wr=w.wrong||0,iv=w.interval||0,nr=w.nextReview||null;
@@ -724,8 +773,8 @@ var S={
   listPart:"all",
   listPage:0,
   analysisPart:"all",
-  analysisPage:{remiss:0,streakWrong:0,sameWrong:0},
-  logDetailOpen:false,
+  analysisPage:{stumble:0,confusion:0,streakWrong:0,forgetting:0},
+  analysisOpen:{stumble:false,confusion:false,streakWrong:false,forgetting:false},
   hideMeaning:false,
   revealed:{},
   theme:"all",partFilter:"all",
@@ -815,10 +864,6 @@ function doImp(){
 function setTheme(v){S.theme=v;applyAutoRange();render();}
 function setPartFilter(v){S.partFilter=v;applyAutoRange();render();}
 function setHint(v){S.hintJP=v;render();}
-function toggleLogDetail(){
-  S.logDetailOpen = !S.logDetailOpen;
-  render();
-}
 function toggleRange(){S.rangeOpen=!S.rangeOpen;render();}
 function toggleLock(){
   S.rangeLocked=!S.rangeLocked;
@@ -1063,6 +1108,7 @@ var q=[];
       example:w.example||'',
       part:w.part||'',
       qtype:qtype(w, mode),
+      attemptType:"first",
       level:x?x.level||0:0,
       correct:x?x.correct||0:0,
       wrong:x?x.wrong||0:0,
@@ -1206,6 +1252,7 @@ function addRetry(q,w,u){
   var r=cloneWord(w);
   mergeInto(r,u);
   r.qtype=retryType(w.qtype,w);
+  r.attemptType="retry";
   q.queue.splice(Math.min(q.i+2,q.queue.length),0,r);
 }
 
@@ -1223,6 +1270,7 @@ function aq(i){
     wordId: w.id,
     word: w.word,
     quizType: w.qtype,
+    attemptType: w.attemptType || "first",
     selectedAnswer: getAnswerTextByType(w,selectedOpt),
     correctAnswer: getAnswerTextByType(w,correctOpt),
     isCorrect: ok,
@@ -1354,7 +1402,13 @@ function filterAnalysisItems(items){
 
 function setAnalysisPart(v){
   S.analysisPart = v;
-  S.analysisPage = {remiss:0,streakWrong:0,sameWrong:0};
+  S.analysisPage = {stumble:0,confusion:0,streakWrong:0,forgetting:0};
+  S.analysisOpen = {stumble:false,confusion:false,streakWrong:false,forgetting:false};
+  render();
+}
+
+function toggleAnalysisSection(type){
+  S.analysisOpen[type] = !S.analysisOpen[type];
   render();
 }
 
@@ -1369,12 +1423,37 @@ function analysisNext(type){
   S.analysisPage[type]++;
   render();
 }
+function analysisDescription(type){
+  if(type==="stumble")return "初回ミス。次の出題で正解できた単語です。何度かミスがあったので、次回出題時に気を付けたい単語です。";
+  if(type==="confusion")return "初回も次の出題も、同じ誤答を選んだ単語です。別の単語や意味と混ざっている可能性があります。";
+  if(type==="streakWrong")return "初回でミスし、次の出題でも別の誤答を選んだ単語です。意味がまだ固まりきっていない可能性があります。";
+  if(type==="forgetting")return "以前は初回で正解できたのに、後日の初回出題でミスした単語です。一度覚えた記憶が薄れている可能性があります。";
+  return "";
+}
+function analysisSummaryCardHTML(type,title,count,color){
+  var open = !!S.analysisOpen[type];
+  var h = "";
+
+  h+='<div class="box" onclick="toggleAnalysisSection(\''+type+'\')" style="cursor:pointer;border-color:'+(open?color:'#1e2238')+';">';
+  h+='<div class="bv" style="color:'+color+'">'+count+'</div>';
+  h+='<div class="bl">'+esc(title)+' '+(open?'▲':'▼')+'</div>';
+  h+='</div>';
+
+  return h;
+}
+
 function analysisSectionHTML(type,title,items,emptyText){
   var h = "";
   var filtered = filterAnalysisItems(items);
+
+  if(!S.analysisOpen[type]){
+    return "";
+  }
+
   var pageSize = 10;
   var totalPages = Math.max(1,Math.ceil(filtered.length/pageSize));
 
+  if(S.analysisPage[type]===undefined)S.analysisPage[type]=0;
   if(S.analysisPage[type]>=totalPages)S.analysisPage[type]=totalPages-1;
   if(S.analysisPage[type]<0)S.analysisPage[type]=0;
 
@@ -1383,6 +1462,11 @@ function analysisSectionHTML(type,title,items,emptyText){
 
   h+='<div class="card" style="margin-bottom:12px;cursor:default">';
   h+='<div class="ct">'+title+' <span style="color:#5a6080;font-size:.78rem;">'+filtered.length+'語</span></div>';
+
+  var desc = analysisDescription(type);
+  if(desc){
+    h+='<div class="si" style="margin-top:8px;text-align:left;">'+esc(title)+'：'+esc(desc)+'</div>';
+  }
 
   if(!filtered.length){
     h+='<div class="cd" style="margin-top:8px;">'+emptyText+'</div>';
@@ -1404,36 +1488,32 @@ function analysisSectionHTML(type,title,items,emptyText){
     h+='<span style="font-weight:900;color:#eef0f8;">'+esc(item.word || "")+'</span>';
     h+='</div>';
 
-    if(type==="remiss"){
+    if(type==="stumble"){
       h+='<div class="cd" style="line-height:1.7;">';
-      h+='<span style="color:#e8c547;font-weight:800;">前は正解 → 今回ミス</span><br>';
-      h+='今回選んだ：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
+      h+='初回で選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
+      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
+      h+='</div>';
+    }
+
+    else if(type==="confusion"){
+      h+='<div class="cd" style="line-height:1.7;">';
+      h+='選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
       h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
       h+='</div>';
     }
 
     else if(type==="streakWrong"){
       h+='<div class="cd" style="line-height:1.7;">';
-      h+='<span style="color:#e8c547;font-weight:800;">2回連続でミス</span><br>';
-      h+='前回：<span style="color:#f05a5a;font-weight:800;">'+esc(item.prevSelectedAnswer || "")+'</span><br>';
-      h+='今回：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
+      h+='初回：<span style="color:#f05a5a;font-weight:800;">'+esc(item.firstSelectedAnswer || "")+'</span><br>';
+      h+='次の出題：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
       h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
-
-      if(item.sameChoice){
-        h+='<div class="si" style="margin-top:6px;">同じ答えを続けて選んでいます</div>';
-      }else{
-        h+='<div class="si" style="margin-top:6px;">前回とは違う答えで迷っています</div>';
-      }
-
       h+='</div>';
     }
 
-    else if(type==="sameWrong"){
+    else if(type==="forgetting"){
       h+='<div class="cd" style="line-height:1.7;">';
-      h+='<span style="color:#9b6dff;font-weight:800;">同じ答えに引っ張られています</span><br>';
-      h+='選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
+      h+='今回選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
       h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
-      h+='<div class="si" style="margin-top:6px;">この組み合わせはセットで確認するとよさそうです</div>';
       h+='</div>';
     }
 
@@ -1458,11 +1538,12 @@ function rAnalysis(){
 
   var h = '<div class="lbox">';
 
-h+='<div class="card" style="margin-bottom:12px;cursor:default">';
-h+='<div class="ct">📊 学習ログ分析</div>';
-h+='<div class="cd">回答ログ '+totalLogs+'件から、ミスの傾向を見つけます。</div>';
-h+='<div class="si" style="margin-top:8px;text-align:left;">迷ったら「同じ誤答」→「連続ミス」→「再ミス」の順に見るのがおすすめです。</div>';
-h+='</div>';
+  h+='<div class="card" style="margin-bottom:12px;cursor:default">';
+  h+='<div class="ct">📊 学習ログ分析</div>';
+  h+='<div class="cd">回答ログ '+totalLogs+'件から、正解までのプロセスを見ます。</div>';
+  h+='<div class="si" style="margin-top:8px;text-align:left;">数字のカードをタップすると、各カテゴリの詳細を開閉できます。</div>';
+  h+='</div>';
+
   h+='<select class="sinput" style="margin-bottom:10px;" onchange="setAnalysisPart(this.value)">';
   h+='<option value="all" '+(S.analysisPart==="all"?'selected':'')+'>すべてのPart</option>';
   h+='<option value="active1" '+(S.analysisPart==="active1"?'selected':'')+'>Active Part1（1〜400）</option>';
@@ -1470,31 +1551,29 @@ h+='</div>';
   h+='<option value="passive1" '+(S.analysisPart==="passive1"?'selected':'')+'>Passive Part1（1001〜1400）</option>';
   h+='<option value="passive2" '+(S.analysisPart==="passive2"?'selected':'')+'>Passive Part2（1401〜2000）</option>';
   h+='</select>';
+
+  var filteredStumble = filterAnalysisItems(insights.stumble);
+  var filteredConfusion = filterAnalysisItems(insights.confusion);
+  var filteredStreakWrong = filterAnalysisItems(insights.streakWrong);
+  var filteredForgetting = filterAnalysisItems(insights.forgetting);
+
   h+='<div class="row">';
-
-  h+='<div class="box">';
-  h+='<div class="bv" style="color:#f05a5a">'+insights.remiss.length+'</div>';
-  h+='<div class="bl">再ミス</div>';
+  h+=analysisSummaryCardHTML("stumble","つまずき",filteredStumble.length,"#e8c547");
+  h+=analysisSummaryCardHTML("confusion","混同",filteredConfusion.length,"#9b6dff");
+  h+=analysisSummaryCardHTML("streakWrong","連続ミス",filteredStreakWrong.length,"#f05a5a");
+  h+=analysisSummaryCardHTML("forgetting","忘れ戻り",filteredForgetting.length,"#7cb8ff");
   h+='</div>';
 
-  h+='<div class="box">';
-  h+='<div class="bv" style="color:#e8c547">'+insights.streakWrong.length+'</div>';
-  h+='<div class="bl">連続ミス</div>';
-  h+='</div>';
-
-  h+='<div class="box">';
-  h+='<div class="bv" style="color:#9b6dff">'+insights.sameWrong.length+'</div>';
-  h+='<div class="bl">同じ誤答</div>';
-  h+='</div>';
-
-  h+='</div>';
-
-  h+=analysisSectionHTML("sameWrong","同じ誤答",insights.sameWrong,"まだ同じ誤答はありません。");
+  h+=analysisSectionHTML("confusion","混同",insights.confusion,"まだ混同はありません。");
   h+=analysisSectionHTML("streakWrong","連続ミス",insights.streakWrong,"まだ連続ミスはありません。");
-  h+=analysisSectionHTML("remiss","再ミス",insights.remiss,"まだ再ミスはありません。");  h+='</div>';
+  h+=analysisSectionHTML("forgetting","忘れ戻り",insights.forgetting,"まだ忘れ戻りはありません。");
+  h+=analysisSectionHTML("stumble","つまずき",insights.stumble,"まだつまずきはありません。");
+
+  h+='</div>';
 
   app.innerHTML = h;
 }
+
 function rList(){
   var p=lp(),f=[],qtxt=(S.ls||"").toLowerCase();
 
@@ -1739,8 +1818,8 @@ window.resetStudyLog=resetStudyLog;
 window.speak=speak;
 window.quickRange=quickRange;
 window.autoSetRange=autoSetRange;
-window.toggleLogDetail=toggleLogDetail;
 window.setAnalysisPart=setAnalysisPart;
+window.toggleAnalysisSection=toggleAnalysisSection;
 window.analysisPrev=analysisPrev;
 window.analysisNext=analysisNext;
 window.toggleStudyView=toggleStudyView;
