@@ -147,6 +147,7 @@ body{font-family:'Hiragino Sans',sans-serif;background:#08090d;color:#eef0f8;min
   <button class="nb on" id="n0" onclick="go(0)">🏠 ホーム</button>
   <button class="nb" id="n1" onclick="go(1)">📝 クイズ</button>
   <button class="nb" id="n2" onclick="go(2)">📋 一覧</button>
+  <button class="nb" id="n3" onclick="go(3)">📊 分析</button>
 </div>
 
 <script>
@@ -393,7 +394,163 @@ function mergeInto(a,b){
   for(var k in b){if(b.hasOwnProperty(k))a[k]=b[k];}
   return a;
 }
+function getAnswerTextByType(w,opt){
+  if(!opt)return "";
 
+  if(w.qtype==="ew4"){
+    return opt.meanings && opt.meanings[0] ? opt.meanings[0] : "";
+  }
+
+  if(w.qtype==="je4"){
+    return opt.word || "";
+  }
+
+  if(w.qtype==="ex4"){
+    return opt.word || "";
+  }
+
+  return opt.word || "";
+}
+
+function loadAnswerLogs(){
+  try{
+    return JSON.parse(localStorage.getItem("answerLogs")||"[]");
+  }catch(e){
+    return [];
+  }
+}
+
+function saveAnswerLog(log){
+  var logs = loadAnswerLogs();
+
+  logs.push(log);
+
+  // 保存量が増えすぎないように、直近1000件だけ残す
+  if(logs.length>1000){
+    logs = logs.slice(logs.length-1000);
+  }
+
+  try{
+    localStorage.setItem("answerLogs",JSON.stringify(logs));
+  }catch(e){}
+}
+function analyzeAnswerLogs(){
+  var logs = loadAnswerLogs();
+  var byWord = {};
+  var result = {
+    remiss: [],
+    streakWrong: [],
+    sameWrong: []
+  };
+
+  for(var i=0;i<logs.length;i++){
+    var log = logs[i];
+    if(!log || !log.wordId)continue;
+
+    if(!byWord[log.wordId])byWord[log.wordId]=[];
+    byWord[log.wordId].push(log);
+  }
+
+  for(var id in byWord){
+    if(!byWord.hasOwnProperty(id))continue;
+
+    var arr = byWord[id];
+
+    arr.sort(function(a,b){
+      return (a.timestamp||0) - (b.timestamp||0);
+    });
+
+    var last = arr[arr.length-1];
+    var prev = arr.length>=2 ? arr[arr.length-2] : null;
+
+    // 再ミス：過去に正解があり、直近が不正解
+    var lastCorrectBefore = null;
+    if(last && !last.isCorrect){
+      for(var j=arr.length-2;j>=0;j--){
+        if(arr[j].isCorrect){
+          lastCorrectBefore = arr[j];
+          break;
+        }
+      }
+
+      if(lastCorrectBefore){
+        result.remiss.push({
+          wordId:last.wordId,
+          wordNum:last.wordNum,
+          word:last.word,
+          correctAnswer:last.correctAnswer,
+          selectedAnswer:last.selectedAnswer,
+          previousCorrectAnswer:lastCorrectBefore.correctAnswer,
+          message:"前は正解 → 今回ミス",
+          timestamp:last.timestamp
+        });
+      }
+    }
+
+    // 連続ミス：直近2回がどちらも不正解
+    if(prev && last && !prev.isCorrect && !last.isCorrect){
+      result.streakWrong.push({
+        wordId:last.wordId,
+        wordNum:last.wordNum,
+        word:last.word,
+        correctAnswer:last.correctAnswer,
+        prevSelectedAnswer:prev.selectedAnswer,
+        selectedAnswer:last.selectedAnswer,
+        sameChoice:prev.selectedAnswer && last.selectedAnswer && prev.selectedAnswer===last.selectedAnswer,
+        message:"2回連続でミス",
+        timestamp:last.timestamp
+      });
+
+      // 同じ誤答：直近2回の不正解で、同じ選択肢を選んでいる
+      if(
+        prev.selectedAnswer &&
+        last.selectedAnswer &&
+        prev.selectedAnswer === last.selectedAnswer
+      ){
+        result.sameWrong.push({
+          wordId:last.wordId,
+          wordNum:last.wordNum,
+          word:last.word,
+          correctAnswer:last.correctAnswer,
+          selectedAnswer:last.selectedAnswer,
+          message:"同じ答えに引っ張られています",
+          timestamp:last.timestamp
+        });
+      }
+    }
+  }
+
+  return result;
+}
+function insightListHTML(title,items,emptyText){
+  var h = "";
+
+  h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e2238;">';
+  h+='<div class="ct" style="font-size:.78rem;margin-bottom:6px;">'+title+'</div>';
+
+  if(!items || !items.length){
+    h+='<div class="cd">'+emptyText+'</div>';
+    h+='</div>';
+    return h;
+  }
+
+  var max = Math.min(items.length,10);
+
+  for(var i=0;i<max;i++){
+    var item = items[i];
+    h+='<div style="display:flex;gap:8px;align-items:center;padding:5px 0;font-size:.8rem;">';
+    h+='<span style="color:#5a6080;min-width:52px;">No.'+esc(item.wordNum || item.wordId || "")+'</span>';
+    h+='<span style="font-weight:800;color:#eef0f8;">'+esc(item.word || "")+'</span>';
+    h+='</div>';
+  }
+
+  if(items.length>10){
+    h+='<div class="cd" style="margin-top:4px;">ほか '+(items.length-10)+'語</div>';
+  }
+
+  h+='</div>';
+  return h;
+}
 function calcNext(w,ok){
   var lv=w.level||0,co=w.correct||0,wr=w.wrong||0,iv=w.interval||0,nr=w.nextReview||null;
   if(ok){
@@ -566,6 +723,9 @@ var S={
   t:0,sk:lsk(),lf:0,ls:"",combo:0,
   listPart:"all",
   listPage:0,
+  analysisPart:"all",
+  analysisPage:{remiss:0,streakWrong:0,sameWrong:0},
+  logDetailOpen:false,
   hideMeaning:false,
   revealed:{},
   theme:"all",partFilter:"all",
@@ -589,14 +749,15 @@ function ustk(){
 function render(){
   var st=$("stk");
   if(st)st.textContent="🔥 "+S.sk.c+"日連続";
-  for(var i=0;i<3;i++){
+  for(var i=0;i<4;i++){
     var n=$("n"+i);
     if(n)n.className="nb"+(S.t===i?" on":"");
   }
   if(S.t===99)rImp();
   else if(S.t===0)rHome();
   else if(S.t===1)rQuiz();
-  else rList();
+  else if(S.t===2)rList();
+  else if(S.t===3)rAnalysis();
 }
 
 function go(t){
@@ -654,6 +815,10 @@ function doImp(){
 function setTheme(v){S.theme=v;applyAutoRange();render();}
 function setPartFilter(v){S.partFilter=v;applyAutoRange();render();}
 function setHint(v){S.hintJP=v;render();}
+function toggleLogDetail(){
+  S.logDetailOpen = !S.logDetailOpen;
+  render();
+}
 function toggleRange(){S.rangeOpen=!S.rangeOpen;render();}
 function toggleLock(){
   S.rangeLocked=!S.rangeLocked;
@@ -726,7 +891,6 @@ h+='<div class="bv" style="color:'+studyColor+'">'+studyNum+'</div>';
 h+='<div class="bl">'+studyLabel+'</div>';
 h+='</div>';
 h+='</div>';
-
   h+='<div class="card" style="margin-bottom:12px;cursor:default">';
   h+='<div class="ct">💡 ヒント設定</div>';
   h+='<div class="frow">';
@@ -785,7 +949,7 @@ h+='<div class="cd" style="width:100%;margin-top:2px;">番号を変更すると�
   h+='</div>';
 
   h+='<button class="btn2" onclick="S.t=99;render()">📂 CSV再読み込み</button>';
-  h+=' <button class="btn2" onclick="resetAll()">🗑 リセット</button>';
+h+=' <button class="btn2" onclick="resetStudyLog()">🔄 学習ログをリセット</button>';
 
   app.innerHTML=h;
 }
@@ -1049,8 +1213,24 @@ function aq(i){
   var q=S.q;
   if(q.ans)return;
   var w=q.queue[q.i],ok=i===q.ci;
+  var selectedOpt = q.opts && q.opts[i] ? q.opts[i] : null;
+  var correctOpt = q.opts && q.opts[q.ci] ? q.opts[q.ci] : null;
+
   q.sel=i;
   q.ans=true;
+
+  saveAnswerLog({
+    wordId: w.id,
+    word: w.word,
+    quizType: w.qtype,
+    selectedAnswer: getAnswerTextByType(w,selectedOpt),
+    correctAnswer: getAnswerTextByType(w,correctOpt),
+    isCorrect: ok,
+    timestamp: now(),
+    part: w.part || "",
+    wordNum: w.num || ""
+  });
+
   addTodayStudy();
   if(ok){q.ok++;S.combo++;}
   else{q.ng++;S.combo=0;}
@@ -1121,6 +1301,200 @@ function listPartMatch(w){
 
   return true;
 }
+function listPagerHTML(totalItems,totalPages,start,showCount,position){
+  if(totalPages<=1)return "";
+
+  var from = totalItems ? start + 1 : 0;
+  var to = totalItems ? start + showCount : 0;
+
+  var margin = position==="top"
+    ? "margin-top:4px;margin-bottom:12px;"
+    : "margin-top:14px;margin-bottom:8px;";
+
+  var h = "";
+
+  h+='<div class="cd" style="margin-bottom:6px;text-align:center;">';
+  h+=from+'〜'+to+'件目 / '+totalItems+'語中　'+(S.listPage+1)+' / '+totalPages+'ページ';
+  h+='</div>';
+
+  h+='<div class="abtn" style="'+margin+'">';
+  h+='<button class="btn2" onclick="listPrev()" '+(S.listPage<=0?'disabled style="opacity:.35;cursor:default"':'')+'>◀ 前へ</button>';
+  h+='<div style="padding:10px 12px;color:#5a6080;font-size:.82rem;">'+(S.listPage+1)+' / '+totalPages+'</div>';
+  h+='<button class="btn2" onclick="listNext()" '+(S.listPage>=totalPages-1?'disabled style="opacity:.35;cursor:default"':'')+'>次へ ▶</button>';
+  h+='</div>';
+
+  return h;
+}
+function analysisPartMatch(item){
+  if(S.analysisPart==="all")return true;
+
+  var n=parseInt(item.wordNum,10)||parseInt(item.wordId,10)||0;
+
+  if(S.analysisPart==="active1")return n>=1&&n<=400;
+  if(S.analysisPart==="active2")return n>=401&&n<=1000;
+  if(S.analysisPart==="passive1")return n>=1001&&n<=1400;
+  if(S.analysisPart==="passive2")return n>=1401&&n<=2000;
+
+  return true;
+}
+
+function filterAnalysisItems(items){
+  var out = [];
+
+  if(!items)return out;
+
+  for(var i=0;i<items.length;i++){
+    if(analysisPartMatch(items[i])){
+      out.push(items[i]);
+    }
+  }
+
+  return out;
+}
+
+function setAnalysisPart(v){
+  S.analysisPart = v;
+  S.analysisPage = {remiss:0,streakWrong:0,sameWrong:0};
+  render();
+}
+
+function analysisPrev(type){
+  if(S.analysisPage[type]>0){
+    S.analysisPage[type]--;
+    render();
+  }
+}
+
+function analysisNext(type){
+  S.analysisPage[type]++;
+  render();
+}
+function analysisSectionHTML(type,title,items,emptyText){
+  var h = "";
+  var filtered = filterAnalysisItems(items);
+  var pageSize = 10;
+  var totalPages = Math.max(1,Math.ceil(filtered.length/pageSize));
+
+  if(S.analysisPage[type]>=totalPages)S.analysisPage[type]=totalPages-1;
+  if(S.analysisPage[type]<0)S.analysisPage[type]=0;
+
+  var start = S.analysisPage[type]*pageSize;
+  var show = filtered.slice(start,start+pageSize);
+
+  h+='<div class="card" style="margin-bottom:12px;cursor:default">';
+  h+='<div class="ct">'+title+' <span style="color:#5a6080;font-size:.78rem;">'+filtered.length+'語</span></div>';
+
+  if(!filtered.length){
+    h+='<div class="cd" style="margin-top:8px;">'+emptyText+'</div>';
+    h+='</div>';
+    return h;
+  }
+
+  h+='<div class="cd" style="margin-top:6px;margin-bottom:8px;">';
+  h+=(start+1)+'〜'+(start+show.length)+'件目 / '+filtered.length+'語中';
+  h+='</div>';
+
+  for(var i=0;i<show.length;i++){
+    var item = show[i];
+
+    h+='<div class="li" style="margin-top:8px;margin-bottom:0;display:block;">';
+
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">';
+    h+='<span style="color:#5a6080;font-size:.72rem;min-width:52px;">No.'+esc(item.wordNum || item.wordId || "")+'</span>';
+    h+='<span style="font-weight:900;color:#eef0f8;">'+esc(item.word || "")+'</span>';
+    h+='</div>';
+
+    if(type==="remiss"){
+      h+='<div class="cd" style="line-height:1.7;">';
+      h+='<span style="color:#e8c547;font-weight:800;">前は正解 → 今回ミス</span><br>';
+      h+='今回選んだ：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
+      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
+      h+='</div>';
+    }
+
+    else if(type==="streakWrong"){
+      h+='<div class="cd" style="line-height:1.7;">';
+      h+='<span style="color:#e8c547;font-weight:800;">2回連続でミス</span><br>';
+      h+='前回：<span style="color:#f05a5a;font-weight:800;">'+esc(item.prevSelectedAnswer || "")+'</span><br>';
+      h+='今回：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
+      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
+
+      if(item.sameChoice){
+        h+='<div class="si" style="margin-top:6px;">同じ答えを続けて選んでいます</div>';
+      }else{
+        h+='<div class="si" style="margin-top:6px;">前回とは違う答えで迷っています</div>';
+      }
+
+      h+='</div>';
+    }
+
+    else if(type==="sameWrong"){
+      h+='<div class="cd" style="line-height:1.7;">';
+      h+='<span style="color:#9b6dff;font-weight:800;">同じ答えに引っ張られています</span><br>';
+      h+='選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
+      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
+      h+='<div class="si" style="margin-top:6px;">この組み合わせはセットで確認するとよさそうです</div>';
+      h+='</div>';
+    }
+
+    h+='</div>';
+  }
+
+  if(totalPages>1){
+    h+='<div class="abtn" style="margin-top:12px;">';
+    h+='<button class="btn2" onclick="analysisPrev(\''+type+'\')" '+(S.analysisPage[type]<=0?'disabled style="opacity:.35;cursor:default"':'')+'>◀ 前へ</button>';
+    h+='<div style="padding:10px 12px;color:#5a6080;font-size:.82rem;">'+(S.analysisPage[type]+1)+' / '+totalPages+'</div>';
+    h+='<button class="btn2" onclick="analysisNext(\''+type+'\')" '+(S.analysisPage[type]>=totalPages-1?'disabled style="opacity:.35;cursor:default"':'')+'>次へ ▶</button>';
+    h+='</div>';
+  }
+
+  h+='</div>';
+  return h;
+}
+
+function rAnalysis(){
+  var insights = analyzeAnswerLogs();
+  var totalLogs = loadAnswerLogs().length;
+
+  var h = '<div class="lbox">';
+
+h+='<div class="card" style="margin-bottom:12px;cursor:default">';
+h+='<div class="ct">📊 学習ログ分析</div>';
+h+='<div class="cd">回答ログ '+totalLogs+'件から、ミスの傾向を見つけます。</div>';
+h+='<div class="si" style="margin-top:8px;text-align:left;">迷ったら「同じ誤答」→「連続ミス」→「再ミス」の順に見るのがおすすめです。</div>';
+h+='</div>';
+  h+='<select class="sinput" style="margin-bottom:10px;" onchange="setAnalysisPart(this.value)">';
+  h+='<option value="all" '+(S.analysisPart==="all"?'selected':'')+'>すべてのPart</option>';
+  h+='<option value="active1" '+(S.analysisPart==="active1"?'selected':'')+'>Active Part1（1〜400）</option>';
+  h+='<option value="active2" '+(S.analysisPart==="active2"?'selected':'')+'>Active Part2（401〜1000）</option>';
+  h+='<option value="passive1" '+(S.analysisPart==="passive1"?'selected':'')+'>Passive Part1（1001〜1400）</option>';
+  h+='<option value="passive2" '+(S.analysisPart==="passive2"?'selected':'')+'>Passive Part2（1401〜2000）</option>';
+  h+='</select>';
+  h+='<div class="row">';
+
+  h+='<div class="box">';
+  h+='<div class="bv" style="color:#f05a5a">'+insights.remiss.length+'</div>';
+  h+='<div class="bl">再ミス</div>';
+  h+='</div>';
+
+  h+='<div class="box">';
+  h+='<div class="bv" style="color:#e8c547">'+insights.streakWrong.length+'</div>';
+  h+='<div class="bl">連続ミス</div>';
+  h+='</div>';
+
+  h+='<div class="box">';
+  h+='<div class="bv" style="color:#9b6dff">'+insights.sameWrong.length+'</div>';
+  h+='<div class="bl">同じ誤答</div>';
+  h+='</div>';
+
+  h+='</div>';
+
+  h+=analysisSectionHTML("sameWrong","同じ誤答",insights.sameWrong,"まだ同じ誤答はありません。");
+  h+=analysisSectionHTML("streakWrong","連続ミス",insights.streakWrong,"まだ連続ミスはありません。");
+  h+=analysisSectionHTML("remiss","再ミス",insights.remiss,"まだ再ミスはありません。");  h+='</div>';
+
+  app.innerHTML = h;
+}
 function rList(){
   var p=lp(),f=[],qtxt=(S.ls||"").toLowerCase();
 
@@ -1172,10 +1546,13 @@ var pageSize=100;
   h+=(S.hideMeaning?'🙈 意味を隠す：ON':'👀 意味を隠す：OFF');
   h+='</button>';
 
-  h+='<div class="cd" style="margin-bottom:9px;">';
-  h+=f.length+'語';
-  if(f.length>0)h+=' / '+(S.listPage+1)+'/'+totalPages+'ページ';
-  h+='</div>';
+  if(totalPages>1){
+    h+=listPagerHTML(f.length,totalPages,start,show.length,"top");
+  }else{
+    h+='<div class="cd" style="margin-bottom:9px;">';
+    h+=f.length+'語';
+    h+='</div>';
+  }
 
   for(i=0;i<show.length;i++){
     var w2=show[i].w;
@@ -1216,11 +1593,7 @@ var pageSize=100;
   }
 
   if(totalPages>1){
-    h+='<div class="abtn" style="margin-top:14px;margin-bottom:8px;">';
-    h+='<button class="btn2" onclick="listPrev()" '+(S.listPage<=0?'disabled style="opacity:.35;cursor:default"':'')+'>◀ 前へ</button>';
-    h+='<div style="padding:10px 12px;color:#5a6080;font-size:.82rem;">'+(S.listPage+1)+' / '+totalPages+'</div>';
-    h+='<button class="btn2" onclick="listNext()" '+(S.listPage>=totalPages-1?'disabled style="opacity:.35;cursor:default"':'')+'>次へ ▶</button>';
-    h+='</div>';
+    h+=listPagerHTML(f.length,totalPages,start,show.length,"bottom");
   }
 
   h+='</div>';
@@ -1250,12 +1623,31 @@ function slp(v){
   S.revealed={};
   render();
 }
+function scrollListTop(){
+  setTimeout(function(){
+    var target = document.querySelector(".lbox");
+    var y = 0;
 
+    if(target){
+      y = target.getBoundingClientRect().top + window.pageYOffset - 8;
+    }
+
+    var scroller = document.scrollingElement || document.documentElement || document.body;
+
+    try{
+      scroller.scrollTop = Math.max(y,0);
+      window.scrollTo(0, Math.max(y,0));
+    }catch(e){
+      window.scrollTo(0,0);
+    }
+  }, 80);
+}
 function listPrev(){
   if(S.listPage>0){
     S.listPage--;
     S.revealed={};
     render();
+    scrollListTop();
   }
 }
 
@@ -1263,6 +1655,7 @@ function listNext(){
   S.listPage++;
   S.revealed={};
   render();
+  scrollListTop();
 }
 
 function toggleHideMeaning(){
@@ -1288,13 +1681,37 @@ function speak(t){
   }catch(e){}
 }
 
-function resetAll(){
-  if(confirm("すべて削除しますか？")){
-    localStorage.clear();
-    try{
-      indexedDB.deleteDatabase(DB_NAME).onsuccess=function(){location.reload();};
-    }catch(e){location.reload();}
+function resetStudyLog(){
+  if(!confirm("学習ログをリセットしますか？\n単語データ・出題範囲・連続学習日数は残ります。")){
+    return;
   }
+
+  // 単語ごとの学習進捗をリセット
+  sp({});
+
+  // 学習数をリセット
+  localStorage.removeItem("studyDay");
+  localStorage.removeItem("studyCount");
+  localStorage.removeItem("studyTotal");
+  localStorage.removeItem("answerLogs");
+
+  // 画面上の状態もリセット
+  S.combo = 0;
+  S.q = {
+    queue:[],
+    i:0,
+    ans:false,
+    sel:-1,
+    ok:0,
+    ng:0,
+    done:false,
+    opts:null,
+    oi:-1,
+    ci:-1
+  };
+
+  alert("学習ログをリセットしました。\n単語データと出題範囲はそのままです。");
+  render();
 }
 
 window.go=go;
@@ -1318,10 +1735,14 @@ window.setHint=setHint;
 window.toggleRange=toggleRange;
 window.toggleLock=toggleLock;
 window.markWeak=markWeak;
-window.resetAll=resetAll;
+window.resetStudyLog=resetStudyLog;
 window.speak=speak;
 window.quickRange=quickRange;
 window.autoSetRange=autoSetRange;
+window.toggleLogDetail=toggleLogDetail;
+window.setAnalysisPart=setAnalysisPart;
+window.analysisPrev=analysisPrev;
+window.analysisNext=analysisNext;
 window.toggleStudyView=toggleStudyView;
 
 initDB(function(){
