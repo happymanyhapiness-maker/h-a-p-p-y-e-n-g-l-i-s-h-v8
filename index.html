@@ -411,6 +411,84 @@ function getAnswerTextByType(w,opt){
 
   return opt.word || "";
 }
+function getMeaningText(w){
+  return w && w.meanings && w.meanings[0] ? w.meanings[0] : "";
+}
+
+function findWordById(id){
+  for(var i=0;i<WM.length;i++){
+    if(WM[i] && String(WM[i].id)===String(id))return WM[i];
+  }
+  return null;
+}
+
+function getQuizTypeLabelByType(t){
+  if(t==="ew4")return "英→日";
+  if(t==="je4")return "日→英";
+  if(t==="ex4")return "例文穴埋め";
+  return "";
+}
+
+function getQuizTypeLabel(w){
+  return getQuizTypeLabelByType(w && w.qtype);
+}
+
+function getQuestionText(w){
+  if(!w)return "";
+
+  if(w.qtype==="ew4"){
+    return w.word || "";
+  }
+
+  if(w.qtype==="je4"){
+    return getMeaningText(w);
+  }
+
+  if(w.qtype==="ex4"){
+    return makeBlank(w.example,w.word) || (w.example || "");
+  }
+
+  return "";
+}
+
+function getLogQuizTypeLabel(log){
+  return (log && log.quizTypeLabel) || getQuizTypeLabelByType(log && log.quizType) || "";
+}
+
+function getLogQuestionText(log){
+  if(!log)return "";
+  if(log.questionText)return log.questionText;
+
+  var w = findWordById(log.wordId);
+  var t = log.quizType || "";
+
+  if(t==="ew4")return log.word || (w ? w.word : "");
+  if(t==="je4")return getMeaningText(w) || log.correctMeaning || "";
+  if(t==="ex4" && w)return makeBlank(w.example,w.word) || (w.example || "");
+
+  return "";
+}
+
+function getLogSelectedText(log){
+  return (log && (log.selectedText || log.selectedAnswer)) || "";
+}
+
+function getLogCorrectText(log){
+  return (log && (log.correctText || log.correctAnswer)) || "";
+}
+
+function getLogCorrectWord(log){
+  if(log && log.correctWord)return log.correctWord;
+  if(log && log.word)return log.word;
+  var w = log ? findWordById(log.wordId) : null;
+  return w ? w.word : "";
+}
+
+function getLogCorrectMeaning(log){
+  if(log && log.correctMeaning)return log.correctMeaning;
+  var w = log ? findWordById(log.wordId) : null;
+  return getMeaningText(w);
+}
 
 function loadAnswerLogs(){
   try{
@@ -533,7 +611,10 @@ function analyzeAnswerLogs(){
           wordNum:first.wordNum,
           word:first.word,
           correctAnswer:first.correctAnswer,
-          selectedAnswer:first.selectedAnswer,
+          selectedAnswer:getLogSelectedText(first),
+          firstLog:first,
+          correctWord:getLogCorrectWord(first),
+          correctMeaning:getLogCorrectMeaning(first),
           previousTimestamp:previousFirstCorrect.timestamp,
           message:"以前は初回で正解 → 後日ミス",
           timestamp:first.timestamp
@@ -561,8 +642,12 @@ function analyzeAnswerLogs(){
           wordNum:first.wordNum,
           word:first.word,
           correctAnswer:first.correctAnswer,
-          selectedAnswer:first.selectedAnswer,
-          retrySelectedAnswer:retry.selectedAnswer,
+          selectedAnswer:getLogSelectedText(first),
+          retrySelectedAnswer:getLogSelectedText(retry),
+          firstLog:first,
+          retryLog:retry,
+          correctWord:getLogCorrectWord(first),
+          correctMeaning:getLogCorrectMeaning(first),
           message:"初回ミス → 次の出題で正解",
           timestamp:retry.timestamp
         });
@@ -572,9 +657,13 @@ function analyzeAnswerLogs(){
           wordNum:first.wordNum,
           word:first.word,
           correctAnswer:first.correctAnswer,
-          selectedAnswer:retry.selectedAnswer,
-          firstSelectedAnswer:first.selectedAnswer,
-          retrySelectedAnswer:retry.selectedAnswer,
+          selectedAnswer:getLogSelectedText(retry),
+          firstSelectedAnswer:getLogSelectedText(first),
+          retrySelectedAnswer:getLogSelectedText(retry),
+          firstLog:first,
+          retryLog:retry,
+          correctWord:getLogCorrectWord(first),
+          correctMeaning:getLogCorrectMeaning(first),
           message:"初回も次の出題も同じ誤答",
           timestamp:retry.timestamp
         });
@@ -584,8 +673,12 @@ function analyzeAnswerLogs(){
           wordNum:first.wordNum,
           word:first.word,
           correctAnswer:first.correctAnswer,
-          firstSelectedAnswer:first.selectedAnswer,
-          selectedAnswer:retry.selectedAnswer,
+          firstSelectedAnswer:getLogSelectedText(first),
+          selectedAnswer:getLogSelectedText(retry),
+          firstLog:first,
+          retryLog:retry,
+          correctWord:getLogCorrectWord(first),
+          correctMeaning:getLogCorrectMeaning(first),
           message:"初回ミス → 次の出題でも別の誤答",
           timestamp:retry.timestamp
         });
@@ -1270,9 +1363,15 @@ function aq(i){
     wordId: w.id,
     word: w.word,
     quizType: w.qtype,
+    quizTypeLabel: getQuizTypeLabel(w),
     attemptType: w.attemptType || "first",
+    questionText: getQuestionText(w),
+    selectedText: getAnswerTextByType(w,selectedOpt),
+    correctText: getAnswerTextByType(w,correctOpt),
     selectedAnswer: getAnswerTextByType(w,selectedOpt),
     correctAnswer: getAnswerTextByType(w,correctOpt),
+    correctWord: w.word || "",
+    correctMeaning: getMeaningText(w),
     isCorrect: ok,
     timestamp: now(),
     part: w.part || "",
@@ -1442,6 +1541,37 @@ function analysisSummaryCardHTML(type,title,count,color){
   return h;
 }
 
+function analysisAttemptHTML(label,log){
+  if(!log)return "";
+
+  var qlabel = getLogQuizTypeLabel(log);
+  var qtext = getLogQuestionText(log);
+  var selected = getLogSelectedText(log);
+
+  var h = "";
+  h+='<div class="si" style="margin-top:7px;text-align:left;background:rgba(0,0,0,.18);">';
+  h+='<div style="font-weight:900;color:#eef0f8;margin-bottom:4px;">'+esc(label)+(qlabel?'（'+esc(qlabel)+'）':'')+'</div>';
+  if(qtext){
+    h+='<div>出題：<span style="color:#d8dcec;font-weight:800;">'+esc(qtext)+'</span></div>';
+  }
+  h+='<div>選択：<span style="color:#f05a5a;font-weight:800;">'+esc(selected || "")+'</span></div>';
+  h+='</div>';
+
+  return h;
+}
+
+function analysisCorrectTitleHTML(item){
+  var word = item.correctWord || item.word || "";
+  var meaning = item.correctMeaning || "";
+
+  if(!meaning){
+    var w = findWordById(item.wordId);
+    meaning = getMeaningText(w);
+  }
+
+  return esc(word) + (meaning ? ' <span style="font-size:.75rem;color:#8b92b1;">（'+esc(meaning)+'）</span>' : "");
+}
+
 function analysisSectionHTML(type,title,items,emptyText){
   var h = "";
   var filtered = filterAnalysisItems(items);
@@ -1485,36 +1615,26 @@ function analysisSectionHTML(type,title,items,emptyText){
 
     h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">';
     h+='<span style="color:#5a6080;font-size:.72rem;min-width:52px;">No.'+esc(item.wordNum || item.wordId || "")+'</span>';
-    h+='<span style="font-weight:900;color:#eef0f8;">'+esc(item.word || "")+'</span>';
+    h+='<span style="font-weight:900;color:#eef0f8;">'+analysisCorrectTitleHTML(item)+'</span>';
     h+='</div>';
 
     if(type==="stumble"){
-      h+='<div class="cd" style="line-height:1.7;">';
-      h+='初回で選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
-      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
-      h+='</div>';
+      h+=analysisAttemptHTML("初回",item.firstLog);
+      h+=analysisAttemptHTML("次の出題",item.retryLog);
     }
 
     else if(type==="confusion"){
-      h+='<div class="cd" style="line-height:1.7;">';
-      h+='選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
-      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
-      h+='</div>';
+      h+=analysisAttemptHTML("初回",item.firstLog);
+      h+=analysisAttemptHTML("次の出題",item.retryLog);
     }
 
     else if(type==="streakWrong"){
-      h+='<div class="cd" style="line-height:1.7;">';
-      h+='初回：<span style="color:#f05a5a;font-weight:800;">'+esc(item.firstSelectedAnswer || "")+'</span><br>';
-      h+='次の出題：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
-      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
-      h+='</div>';
+      h+=analysisAttemptHTML("初回",item.firstLog);
+      h+=analysisAttemptHTML("次の出題",item.retryLog);
     }
 
     else if(type==="forgetting"){
-      h+='<div class="cd" style="line-height:1.7;">';
-      h+='今回選んだ答え：<span style="color:#f05a5a;font-weight:800;">'+esc(item.selectedAnswer || "")+'</span><br>';
-      h+='正解：<span style="color:#4fc8a4;font-weight:800;">'+esc(item.correctAnswer || "")+'</span>';
-      h+='</div>';
+      h+=analysisAttemptHTML("後日",item.firstLog);
     }
 
     h+='</div>';
