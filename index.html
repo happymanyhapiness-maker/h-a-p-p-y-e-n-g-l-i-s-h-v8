@@ -135,6 +135,20 @@ body{font-family:'Hiragino Sans',sans-serif;background:#08090d;color:#eef0f8;min
 .combo{width:100%;max-width:640px;text-align:center;color:#e8c547;font-weight:900;margin-bottom:10px;}
 .meta{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
 .chip{display:inline-block;background:#111318;border:1px solid #1e2238;color:#8b92b1;border-radius:999px;padding:4px 9px;font-size:.68rem;font-weight:700;}
+
+.analysis-paper{background:#fff8e8!important;border-color:#ead9b8!important;color:#283142!important;box-shadow:0 2px 10px rgba(0,0,0,.14);}
+.analysis-paper .analysis-word{color:#202635!important;}
+.analysis-paper .analysis-meaning{font-size:.75rem;color:#667085!important;}
+.analysis-paper .analysis-no{color:#7b8294!important;font-size:.72rem;min-width:52px;}
+.analysis-attempt{margin-top:7px;text-align:left;background:#f6eddc;border:1px solid #ead9b8;border-radius:8px;padding:7px 10px;font-size:.75rem;color:#3d4556;line-height:1.65;}
+.analysis-attempt-title{font-weight:900;color:#202635;margin-bottom:4px;}
+.analysis-question{color:#283142;font-weight:800;}
+.analysis-selected{color:#b94747;font-weight:900;}
+.list-revealed{background:#fff8e8!important;border-color:#ead9b8!important;color:#283142!important;box-shadow:0 2px 10px rgba(0,0,0,.14);}
+.list-revealed .ln{color:#7b8294!important;}
+.list-revealed .le{color:#202635!important;}
+.list-revealed .lm{color:#465166!important;}
+.list-revealed button{background:#fff3d4!important;border-color:#ead9b8!important;color:#316b9f!important;}
 </style>
 </head>
 <body>
@@ -1523,9 +1537,9 @@ function analysisNext(type){
   render();
 }
 function analysisDescription(type){
-  if(type==="stumble")return "初回ミス。次の出題で正解できた単語です。何度かミスがあったので、次回出題時に気を付けたい単語です。";
-  if(type==="confusion")return "初回も次の出題も、同じ誤答を選んだ単語です。別の単語や意味と混ざっている可能性があります。";
-  if(type==="streakWrong")return "初回でミスし、次の出題でも別の誤答を選んだ単語です。意味がまだ固まりきっていない可能性があります。";
+  if(type==="stumble")return "初回でミスしたあと、次の出題で正解できた単語です。単語ごとの詳細では、最初に何が出て何を選んだかだけを表示します。";
+  if(type==="confusion")return "初回も次の出題も、同じ答えを選んでミスした単語です。別の単語を連想して、同じ答えに引っ張られている可能性があります。";
+  if(type==="streakWrong")return "初回も次の出題もミスしたものの、選んだ答えは違った単語です。まだ答えが固定されず、迷っている可能性があります。";
   if(type==="forgetting")return "以前は初回で正解できたのに、後日の初回出題でミスした単語です。一度覚えた記憶が薄れている可能性があります。";
   return "";
 }
@@ -1549,12 +1563,12 @@ function analysisAttemptHTML(label,log){
   var selected = getLogSelectedText(log);
 
   var h = "";
-  h+='<div class="si" style="margin-top:7px;text-align:left;background:rgba(0,0,0,.18);">';
-  h+='<div style="font-weight:900;color:#eef0f8;margin-bottom:4px;">'+esc(label)+(qlabel?'（'+esc(qlabel)+'）':'')+'</div>';
+  h+='<div class="analysis-attempt">';
+  h+='<div class="analysis-attempt-title">'+esc(label)+(qlabel?'（'+esc(qlabel)+'）':'')+'</div>';
   if(qtext){
-    h+='<div>出題：<span style="color:#d8dcec;font-weight:800;">'+esc(qtext)+'</span></div>';
+    h+='<div>出題：<span class="analysis-question">'+esc(qtext)+'</span></div>';
   }
-  h+='<div>選択：<span style="color:#f05a5a;font-weight:800;">'+esc(selected || "")+'</span></div>';
+  h+='<div>選択：<span class="analysis-selected">'+esc(selected || "")+'</span></div>';
   h+='</div>';
 
   return h;
@@ -1569,7 +1583,7 @@ function analysisCorrectTitleHTML(item){
     meaning = getMeaningText(w);
   }
 
-  return esc(word) + (meaning ? ' <span style="font-size:.75rem;color:#8b92b1;">（'+esc(meaning)+'）</span>' : "");
+  return esc(word) + (meaning ? ' <span class="analysis-meaning">（'+esc(meaning)+'）</span>' : "");
 }
 
 function analysisSectionHTML(type,title,items,emptyText){
@@ -1611,21 +1625,19 @@ function analysisSectionHTML(type,title,items,emptyText){
   for(var i=0;i<show.length;i++){
     var item = show[i];
 
-    h+='<div class="li" style="margin-top:8px;margin-bottom:0;display:block;">';
+    h+='<div class="li analysis-paper" style="margin-top:8px;margin-bottom:0;display:block;">';
 
     h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">';
-    h+='<span style="color:#5a6080;font-size:.72rem;min-width:52px;">No.'+esc(item.wordNum || item.wordId || "")+'</span>';
-    h+='<span style="font-weight:900;color:#eef0f8;">'+analysisCorrectTitleHTML(item)+'</span>';
+    h+='<span class="analysis-no">No.'+esc(item.wordNum || item.wordId || "")+'</span>';
+    h+='<span class="analysis-word" style="font-weight:900;">'+analysisCorrectTitleHTML(item)+'</span>';
     h+='</div>';
 
     if(type==="stumble"){
       h+=analysisAttemptHTML("初回",item.firstLog);
-      h+=analysisAttemptHTML("次の出題",item.retryLog);
     }
 
     else if(type==="confusion"){
       h+=analysisAttemptHTML("初回",item.firstLog);
-      h+=analysisAttemptHTML("次の出題",item.retryLog);
     }
 
     else if(type==="streakWrong"){
@@ -1679,13 +1691,13 @@ function rAnalysis(){
 
   h+='<div class="row">';
   h+=analysisSummaryCardHTML("stumble","つまずき",filteredStumble.length,"#e8c547");
-  h+=analysisSummaryCardHTML("confusion","混同",filteredConfusion.length,"#9b6dff");
-  h+=analysisSummaryCardHTML("streakWrong","連続ミス",filteredStreakWrong.length,"#f05a5a");
+  h+=analysisSummaryCardHTML("confusion","同じ誤答",filteredConfusion.length,"#9b6dff");
+  h+=analysisSummaryCardHTML("streakWrong","迷いミス",filteredStreakWrong.length,"#f05a5a");
   h+=analysisSummaryCardHTML("forgetting","忘れ戻り",filteredForgetting.length,"#7cb8ff");
   h+='</div>';
 
-  h+=analysisSectionHTML("confusion","混同",insights.confusion,"まだ混同はありません。");
-  h+=analysisSectionHTML("streakWrong","連続ミス",insights.streakWrong,"まだ連続ミスはありません。");
+  h+=analysisSectionHTML("confusion","同じ誤答",insights.confusion,"まだ同じ誤答はありません。");
+  h+=analysisSectionHTML("streakWrong","迷いミス",insights.streakWrong,"まだ迷いミスはありません。");
   h+=analysisSectionHTML("forgetting","忘れ戻り",insights.forgetting,"まだ忘れ戻りはありません。");
   h+=analysisSectionHTML("stumble","つまずき",insights.stumble,"まだつまずきはありません。");
 
@@ -1766,8 +1778,9 @@ var pageSize=100;
 
     var sw=js(w2.word);
     var isOpen=!S.hideMeaning||S.revealed[w2.id];
+    var liClass = (S.hideMeaning && S.revealed[w2.id]) ? "li list-revealed" : "li";
 
-    h+='<div class="li" '+(S.hideMeaning?'onclick="toggleReveal('+w2.id+')" style="cursor:pointer"':'')+'>';
+    h+='<div class="'+liClass+'" '+(S.hideMeaning?'onclick="toggleReveal('+w2.id+')" style="cursor:pointer"':'')+'>';
     h+='<div class="ln">'+esc(w2.num)+'</div>';
     h+='<div class="lb">';
 
