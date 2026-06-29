@@ -437,6 +437,17 @@ function findWordById(id){
   return null;
 }
 
+function findWordByWord(word){
+  var key = String(word||"").toLowerCase();
+  if(!key)return null;
+
+  for(var i=0;i<WM.length;i++){
+    if(WM[i] && String(WM[i].word||"").toLowerCase()===key)return WM[i];
+  }
+
+  return null;
+}
+
 function getQuizTypeLabelByType(t){
   if(t==="ew4")return "英→日";
   if(t==="je4")return "日→英";
@@ -503,6 +514,40 @@ function getLogCorrectMeaning(log){
   if(log && log.correctMeaning)return log.correctMeaning;
   var w = log ? findWordById(log.wordId) : null;
   return getMeaningText(w);
+}
+
+function getLogSelectedMeaning(log){
+  if(log && log.selectedMeaning)return log.selectedMeaning;
+  var w = log ? findWordByWord(log.selectedText || log.selectedAnswer) : null;
+  return getMeaningText(w);
+}
+
+function isExampleLog(log){
+  if(!log)return false;
+  return log.quizType==="ex4" || log.quizTypeLabel==="例文穴埋め";
+}
+
+function withMeaningForExample(text,meaning){
+  if(!text)return "";
+  if(!meaning)return text;
+  if(String(text).indexOf(meaning)>=0)return text;
+  return text + "（" + meaning + "）";
+}
+
+function getAnalysisSelectedDisplay(log){
+  var text = getLogSelectedText(log);
+  if(isExampleLog(log)){
+    return withMeaningForExample(text,getLogSelectedMeaning(log));
+  }
+  return text;
+}
+
+function getAnalysisCorrectDisplay(log){
+  var text = getLogCorrectText(log);
+  if(isExampleLog(log)){
+    return withMeaningForExample(text,getLogCorrectMeaning(log));
+  }
+  return text;
 }
 
 function loadAnswerLogs(){
@@ -1385,6 +1430,8 @@ function aq(i){
     correctText: getAnswerTextByType(w,correctOpt),
     selectedAnswer: getAnswerTextByType(w,selectedOpt),
     correctAnswer: getAnswerTextByType(w,correctOpt),
+    selectedWord: selectedOpt ? (selectedOpt.word || "") : "",
+    selectedMeaning: selectedOpt ? getMeaningText(selectedOpt) : "",
     correctWord: w.word || "",
     correctMeaning: getMeaningText(w),
     isCorrect: ok,
@@ -1561,8 +1608,8 @@ function analysisAttemptHTML(label,log){
 
   var qlabel = getLogQuizTypeLabel(log);
   var qtext = getLogQuestionText(log);
-  var selected = getLogSelectedText(log);
-  var correct = getLogCorrectText(log);
+  var selected = getAnalysisSelectedDisplay(log);
+  var correct = getAnalysisCorrectDisplay(log);
 
   var h = "";
   h+='<div class="analysis-attempt">';
