@@ -636,6 +636,7 @@ function analyzeAnswerLogs(){
   for(var i=0;i<logs.length;i++){
     var log = logs[i];
     if(!log || !log.wordId)continue;
+    if(log.analysisExcluded)continue;
 
     if(!byWord[log.wordId])byWord[log.wordId]=[];
     byWord[log.wordId].push(log);
@@ -1262,6 +1263,8 @@ var q=[];
       part:w.part||'',
       qtype:qtype(w, mode),
       attemptType:"first",
+      studyMode:mode,
+      analysisExcluded:mode===2,
       level:x?x.level||0:0,
       correct:x?x.correct||0:0,
       wrong:x?x.wrong||0:0,
@@ -1425,6 +1428,8 @@ function aq(i){
     quizType: w.qtype,
     quizTypeLabel: getQuizTypeLabel(w),
     attemptType: w.attemptType || "first",
+    studyMode: w.studyMode,
+    analysisExcluded: !!w.analysisExcluded,
     questionText: getQuestionText(w),
     selectedText: getAnswerTextByType(w,selectedOpt),
     correctText: getAnswerTextByType(w,correctOpt),
@@ -1711,13 +1716,19 @@ function analysisSectionHTML(type,title,items,emptyText){
 
 function rAnalysis(){
   var insights = analyzeAnswerLogs();
-  var totalLogs = loadAnswerLogs().length;
+  var logs = loadAnswerLogs();
+  var totalLogs = logs.length;
+  var targetLogs = 0;
+
+  for(var i=0;i<logs.length;i++){
+    if(logs[i] && !logs[i].analysisExcluded)targetLogs++;
+  }
 
   var h = '<div class="lbox">';
 
   h+='<div class="card" style="margin-bottom:12px;cursor:default">';
   h+='<div class="ct">📊 学習ログ分析</div>';
-  h+='<div class="cd">回答ログ '+totalLogs+'件から、正解までのプロセスを見ます。</div>';
+  h+='<div class="cd">回答ログ '+totalLogs+'件（分析対象 '+targetLogs+'件）から、正解までのプロセスを見ます。</div>';
   h+='<div class="si" style="margin-top:8px;text-align:left;">数字のカードをタップすると、各カテゴリの詳細を開閉できます。</div>';
   h+='</div>';
 
